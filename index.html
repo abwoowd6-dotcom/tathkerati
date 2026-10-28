@@ -1,0 +1,623 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>تذكيراتي</title>
+<meta name="theme-color" content="#0f1117">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="تذكيراتي">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+  :root {
+    --bg: #0f1117; --card: #181b24; --field: #232736; --field-hover: #2d3246;
+    --text: #f3f4f8; --muted: #7d8398; --accent: #6c8cff; --green: #34c98b;
+    --red: #ff6b7a; --urgent: #ff8a4c;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Arabic", "Segoe UI", Tahoma, sans-serif;
+    padding: calc(env(safe-area-inset-top) + 14px) 16px calc(env(safe-area-inset-bottom) + 24px);
+    max-width: 560px; margin: 0 auto; min-height: 100vh;
+  }
+  button, input { font: inherit; color: inherit; }
+  button { border: 0; cursor: pointer; background: none; }
+  input { font-size: 16px; } /* أقل من 16 يخلي الآيفون يقرّب الشاشة */
+  .hidden { display: none !important; }
+
+  header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  h1 { font-size: 27px; margin: 4px 0 0; }
+  .date { color: var(--muted); font-size: 14px; margin-top: 2px; }
+  .status { font-size: 12px; padding: 6px 10px; border-radius: 99px; background: var(--card); color: var(--muted); white-space: nowrap; margin-top: 8px; }
+  .status.ok { color: var(--green); }
+  .status.off { color: var(--urgent); }
+
+  .seg { display: flex; background: var(--card); border-radius: 14px; padding: 4px; gap: 4px; margin-top: 16px; }
+  .seg button { flex: 1; padding: 10px; border-radius: 11px; font-weight: 700; font-size: 15px; color: var(--muted); }
+  .seg button.on { background: var(--accent); color: #fff; }
+  .seg.small button { padding: 7px; font-size: 14px; }
+
+  .card { background: var(--card); border-radius: 18px; padding: 14px 16px; margin-top: 12px; }
+  .progress-head { display: flex; justify-content: space-between; font-size: 14px; }
+  .progress-head b { font-size: 15px; }
+  .progress-head span { color: var(--muted); }
+  .bar { height: 8px; background: var(--field); border-radius: 4px; margin-top: 10px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--green); border-radius: 4px; transition: width .3s; }
+
+  .text-in { width: 100%; background: var(--field); border: 0; border-radius: 12px; padding: 13px 14px; outline: none; }
+  .text-in:focus { box-shadow: 0 0 0 1px var(--accent); }
+  .row { display: flex; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .label { color: var(--muted); font-size: 14px; width: 40px; }
+  .pill { padding: 8px 14px; border-radius: 99px; background: var(--field); color: var(--muted); font-size: 14px; }
+  .pill.on { background: var(--accent); color: #fff; }
+  .time-in, .date-in { background: var(--field); border: 0; border-radius: 10px; padding: 8px 10px; outline: none; color: var(--text); }
+  .time-in:disabled { opacity: .4; }
+  .check { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 14px; width: 40px; }
+  .check input { width: 18px; height: 18px; accent-color: var(--accent); margin: 0; }
+  .actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px; }
+  .btn { background: var(--accent); color: #fff; font-weight: 700; padding: 11px 22px; border-radius: 12px; font-size: 15px; }
+  .btn.ghost { background: var(--field); color: var(--text); font-weight: 400; }
+  .btn.urgent { background: var(--urgent); color: #1a0c03; }
+  .switch { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+  .switch input { width: 18px; height: 18px; accent-color: var(--accent); margin: 0; }
+  .flash { font-size: 13px; font-weight: 700; margin-top: 10px; min-height: 1em; }
+
+  .group { display: flex; align-items: center; gap: 8px; margin: 20px 6px 4px; font-weight: 700; font-size: 15px; }
+  .group span { color: var(--muted); font-weight: 400; font-size: 13px; }
+  .group button { margin-inline-start: auto; color: var(--muted); font-size: 13px; padding: 4px 10px; border-radius: 99px; }
+  .item { display: flex; align-items: center; gap: 12px; background: var(--card); border-radius: 16px; padding: 13px 14px; margin-top: 8px; }
+  .tick { width: 30px; height: 30px; flex: none; border-radius: 50%; border: 2px solid var(--muted); color: #06130d; font-weight: 800; display: grid; place-items: center; }
+  .tick.on { background: var(--green); border-color: var(--green); }
+  .body { flex: 1; min-width: 0; }
+  .title { font-weight: 700; font-size: 16px; overflow-wrap: anywhere; }
+  .title.done { color: var(--muted); text-decoration: line-through; }
+  .meta { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .side { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .side button { width: 32px; height: 30px; border-radius: 50%; color: var(--muted); font-size: 15px; }
+  .empty { text-align: center; color: var(--muted); padding: 50px 0; line-height: 1.8; }
+
+  .notify { display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid var(--field-hover); }
+  .notify p { margin: 0; font-size: 13px; color: var(--muted); }
+  .notify b { display: block; font-size: 15px; color: var(--text); margin-bottom: 2px; }
+
+  #login { max-width: 400px; margin: 12vh auto 0; }
+  #login h2 { font-size: 26px; margin: 0; }
+  #login p { color: var(--muted); font-size: 14px; margin: 6px 0 18px; }
+  #login .text-in { margin-top: 10px; direction: ltr; text-align: right; }
+  #login .btn { width: 100%; margin-top: 14px; padding: 13px; }
+  .msg { font-size: 13px; font-weight: 700; margin-top: 10px; min-height: 1em; }
+  .foot { text-align: center; margin-top: 30px; }
+  .foot button { color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+
+<section id="login" class="hidden">
+  <h2>☁️ تذكيراتي</h2>
+  <p>سجّل دخول بنفس الإيميل وكلمة المرور اللي في برنامج الكمبيوتر</p>
+  <input id="email" class="text-in" type="email" autocomplete="username" placeholder="الإيميل" value="abwoowd2@gmail.com">
+  <input id="password" class="text-in" type="password" autocomplete="current-password" placeholder="كلمة المرور">
+  <button id="login-btn" class="btn">دخول</button>
+  <div id="login-msg" class="msg"></div>
+</section>
+
+<main id="app" class="hidden">
+  <header>
+    <div>
+      <h1 id="hello"></h1>
+      <div class="date" id="today"></div>
+    </div>
+    <div class="status" id="status">…</div>
+  </header>
+
+  <div class="seg" id="section">
+    <button data-v="tasks" class="on">المهام</button>
+    <button data-v="reminders">التذكيرات</button>
+  </div>
+
+  <div class="card">
+    <div class="progress-head"><b id="prog-title"></b><span id="prog-count"></span></div>
+    <div class="bar"><i id="prog-bar" style="width:0"></i></div>
+  </div>
+
+  <div class="card notify hidden" id="notify">
+    <div><b>🔔 فعّل التنبيهات</b><p>عشان توصلك التذكيرات على الجوال حتى لو الكمبيوتر مطفي</p></div>
+    <button class="btn" id="notify-btn">فعّل</button>
+  </div>
+
+  <form class="card" id="task-form" autocomplete="off">
+    <input class="text-in" id="task-title" placeholder="وش المهمة؟ (تنفذها في أي وقت)" enterkeyhint="done">
+    <div class="actions">
+      <button class="btn" type="submit">＋ إضافة</button>
+      <button class="btn ghost" type="button" id="urgent-btn">عادية</button>
+    </div>
+  </form>
+
+  <form class="card hidden" id="rem-form" autocomplete="off">
+    <input class="text-in" id="rem-title" placeholder="وش تبي تتذكر؟" enterkeyhint="done">
+    <div class="row">
+      <span class="label">متى</span>
+      <button type="button" class="pill" data-day="0">اليوم</button>
+      <button type="button" class="pill" data-day="1">بكرا</button>
+      <input type="date" class="date-in" id="rem-date">
+    </div>
+    <div class="row">
+      <span class="label">من</span>
+      <input type="time" class="time-in" id="rem-start">
+    </div>
+    <div class="row">
+      <label class="check"><input type="checkbox" id="has-end">إلى</label>
+      <input type="time" class="time-in" id="rem-end" disabled>
+    </div>
+    <div class="actions">
+      <button class="btn" type="submit">＋ إضافة</button>
+      <label class="switch"><input type="checkbox" id="rem-daily">يتكرر كل يوم</label>
+    </div>
+    <div class="flash" id="flash"></div>
+  </form>
+
+  <div class="seg small hidden" id="view">
+    <button data-v="today" class="on">اليوم</button>
+    <button data-v="all">الكل</button>
+  </div>
+
+  <div id="list"></div>
+
+  <div class="foot"><button id="logout">تسجيل خروج</button></div>
+</main>
+
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm";
+
+const SUPABASE_URL = "https://cdbegnazbfqzkpvyhvzf.supabase.co";
+const SUPABASE_KEY = "sb_publishable_d5FCnmtNNXrRDb6NRD4yow__DUo-ICt";
+const VAPID_PUBLIC = "BMcQVqzz-4t62ZohKTlhHY948AFpIn5qrk4HkrZC1WUG1DQlrvzibyx5LA6PDFiZ_bS-fSoPL0oXp-2MLK1oB7Q";
+const WARN_BEFORE = 30;
+
+const DAYS = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+const MONTHS = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
+                "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
+
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = (id) => document.getElementById(id);
+
+// ---------- البيانات: نسخة على الجهاز + طابور للي ما انرفع ----------
+const store = {
+  get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+let items = store.get("items", {});      // id -> item
+let queue = store.get("queue", {});      // id -> item أو null للمحذوف
+let since = store.get("since", null);
+let online = false;
+
+function persist() {
+  store.set("items", items);
+  store.set("queue", queue);
+  store.set("since", since);
+}
+
+function change(item) {
+  items[item.id] = item;
+  queue[item.id] = item;
+  persist();
+  render();
+  sync();
+}
+
+function remove(id) {
+  delete items[id];
+  queue[id] = null;
+  persist();
+  render();
+  sync();
+}
+
+let syncing = false;
+async function sync() {
+  if (syncing) return;
+  syncing = true;
+  try {
+    const batch = { ...queue };
+    const ids = Object.keys(batch);
+    if (ids.length) {
+      const rows = ids.map((id) => ({ id, data: batch[id] || {}, deleted: batch[id] === null }));
+      const { error } = await sb.from("items").upsert(rows, { onConflict: "id" });
+      if (error) throw error;
+      for (const id of ids) if (queue[id] === batch[id]) delete queue[id];
+    }
+    let q = sb.from("items").select("id,data,deleted,updated_at").order("updated_at");
+    if (since) q = q.gt("updated_at", since);
+    const { data, error } = await q;
+    if (error) throw error;
+    if (data.length) {
+      since = data[data.length - 1].updated_at;
+      for (const r of data) {
+        if (r.id in queue) continue; // عندنا تعديل أحدث لسا ما انرفع
+        if (r.deleted) delete items[r.id];
+        else items[r.id] = r.data;
+      }
+    }
+    online = true;
+    persist();
+    if (data.length) render();
+  } catch (e) {
+    online = false;
+    if (e?.status === 401) await checkSession();
+  } finally {
+    syncing = false;
+    paintStatus();
+  }
+}
+
+function paintStatus() {
+  const s = $("status");
+  s.textContent = online ? "☁️ متزامن" : "☁️ بدون نت";
+  s.className = "status " + (online ? "ok" : "off");
+}
+
+// ---------- وقت وتاريخ ----------
+const pad = (n) => String(n).padStart(2, "0");
+const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const hm = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const todayStr = () => ymd(new Date());
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const kind = (it) => it.kind || "reminder";
+const dueDt = (it) => new Date(`${it.date}T${it.time}`);
+function endDt(it) {
+  if (!it.end) return null;
+  const e = new Date(`${it.date}T${it.end}`);
+  return e > dueDt(it) ? e : addDays(e, 1);
+}
+function fmt12(t) {
+  const [h, m] = t.split(":").map(Number);
+  return `${h % 12 || 12}:${pad(m)} ${h < 12 ? "ص" : "م"}`;
+}
+function durText(ms) {
+  const mins = Math.max(0, Math.floor(ms / 60000) + 1);
+  if (mins < 60) return `${mins} د`;
+  const h = Math.floor(mins / 60), m = mins % 60;
+  return `${h} س` + (m ? ` و ${m} د` : "");
+}
+function dayLabel(s) {
+  const d = new Date(`${s}T00:00`);
+  const diff = Math.round((d - new Date(`${todayStr()}T00:00`)) / 86400000);
+  if (diff === 0) return "اليوم";
+  if (diff === 1) return "بكرا";
+  if (diff === -1) return "أمس";
+  return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
+}
+
+// ---------- الواجهة ----------
+let section = "tasks", view = "today", urgent = false, dayOffset = 0;
+
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+
+function card(it, done, meta, metaColor, onTick, extra) {
+  const row = el("div", "item");
+  const tick = el("button", "tick" + (done ? " on" : ""), done ? "✓" : "");
+  tick.onclick = onTick;
+  const body = el("div", "body");
+  body.append(el("div", "title" + (done ? " done" : ""), it.title));
+  if (meta) {
+    const m = el("div", "meta", meta);
+    if (metaColor) m.style.color = metaColor;
+    body.append(m);
+  }
+  const side = el("div", "side");
+  if (extra) side.append(extra);
+  const del = el("button", "", "✕");
+  del.onclick = () => remove(it.id);
+  side.append(del);
+  row.append(tick, body, side);
+  return row;
+}
+
+function group(list, text, color, count, action) {
+  const g = el("div", "group");
+  const t = el("b", "", text);
+  t.style.color = color;
+  g.append(t, el("span", "", String(count)));
+  if (action) {
+    const b = el("button", "", action[0]);
+    b.onclick = action[1];
+    g.append(b);
+  }
+  list.append(g);
+}
+
+function setProgress(title, done, total, emptyText) {
+  $("prog-title").textContent = title;
+  $("prog-count").textContent = total ? `${done} من ${total}` : emptyText;
+  $("prog-bar").style.width = total ? `${(done / total) * 100}%` : "0";
+}
+
+function render() {
+  const now = new Date();
+  const h = now.getHours();
+  $("hello").textContent = (h >= 4 && h < 12 ? "صباح الخير" : h < 18 ? "مساء الخير" : "هلا والله") + " 👋";
+  $("today").textContent = `${DAYS[now.getDay()]}، ${now.getDate()} ${MONTHS[now.getMonth()]} ${now.getFullYear()}`;
+
+  document.querySelectorAll("#section button").forEach((b) => b.classList.toggle("on", b.dataset.v === section));
+  document.querySelectorAll("#view button").forEach((b) => b.classList.toggle("on", b.dataset.v === view));
+  $("task-form").classList.toggle("hidden", section !== "tasks");
+  $("rem-form").classList.toggle("hidden", section !== "reminders");
+  $("view").classList.toggle("hidden", section !== "reminders");
+
+  const list = $("list");
+  list.replaceChildren();
+  const all = Object.values(items);
+  if (section === "tasks") renderTasks(list, all.filter((i) => kind(i) === "task"));
+  else renderReminders(list, all.filter((i) => kind(i) === "reminder"), now);
+}
+
+function renderTasks(list, tasks) {
+  const urg = tasks.filter((i) => !i.done && i.urgent);
+  const normal = tasks.filter((i) => !i.done && !i.urgent);
+  const done = tasks.filter((i) => i.done);
+  setProgress("تقدم المهام", done.length, tasks.length, "ما عندك مهام");
+  if (!tasks.length) {
+    list.append(Object.assign(el("div", "empty"), { innerText: "ما فيه مهام 🎉\nأضف مهمة من فوق" }));
+    return;
+  }
+  const groups = [
+    ["🔥 مستعجلة", "var(--urgent)", urg],
+    ["عادية", "var(--accent)", normal],
+    ["✓ منجزة", "var(--green)", done, ["مسح الكل", () => done.forEach((i) => remove(i.id))]],
+  ];
+  for (const [title, color, g, action] of groups) {
+    if (!g.length) continue;
+    group(list, title, color, g.length, action);
+    for (const it of g) {
+      let flag = null;
+      if (!it.done) {
+        flag = el("button", "", it.urgent ? "🔥" : "⚑");
+        if (it.urgent) flag.style.color = "var(--urgent)";
+        flag.onclick = () => change({ ...it, urgent: !it.urgent });
+      }
+      list.append(card(it, it.done, "", null, () => change({ ...it, done: !it.done }), flag));
+    }
+  }
+}
+
+function reminderCard(it, now) {
+  const today = todayStr();
+  const rolled = it.done_at === today && it.date !== today;
+  const done = it.done || rolled;
+  const end = endDt(it);
+  let meta = end ? `من ${fmt12(it.time)} إلى ${fmt12(it.end)}` : fmt12(it.time);
+  if (it.daily) meta += "  •  🔁 يومي";
+  let color = null;
+  if (!done && end) {
+    if (now >= end) { meta += "  •  انتهى ولم تنفذ"; color = "var(--red)"; }
+    else if (now >= dueDt(it)) {
+      const left = end - now;
+      meta += `  •  باقي ${durText(left)}`;
+      color = left <= WARN_BEFORE * 60000 ? "var(--urgent)" : "var(--accent)";
+    }
+  } else if (!done && dueDt(it) < now) { meta += "  •  فات وقته"; color = "var(--red)"; }
+  return card(it, done, meta, color, () => toggleReminder(it));
+}
+
+function renderReminders(list, rems, now) {
+  const today = todayStr();
+  const todayRows = rems.filter((i) => i.date === today || i.done_at === today);
+  const nDone = todayRows.filter((i) => i.done || (i.done_at === today && i.date !== today)).length;
+  setProgress("تذكيرات اليوم", nDone, todayRows.length, "ما عندك شي");
+
+  const rows = view === "today" ? todayRows : rems;
+  const order = (a, b) => (a.date + (a.done ? 1 : 0) + a.time).localeCompare(b.date + (b.done ? 1 : 0) + b.time);
+  if (view === "today") {
+    for (const it of rows.sort((a, b) => (a.done - b.done) || (dueDt(a) - dueDt(b)))) list.append(reminderCard(it, now));
+  } else {
+    const byDay = {};
+    for (const it of rows.sort(order)) (byDay[it.date] ||= []).push(it);
+    for (const [date, g] of Object.entries(byDay)) {
+      const d = new Date(`${date}T00:00`);
+      let label = dayLabel(date);
+      label = ["اليوم", "بكرا", "أمس"].includes(label) ? `${label}  •  ${DAYS[d.getDay()]}` : `${DAYS[d.getDay()]} ${label}`;
+      group(list, label, date >= today ? "var(--accent)" : "var(--muted)", g.length);
+      for (const it of g) list.append(reminderCard(it, now));
+    }
+  }
+  if (!rows.length) {
+    list.append(Object.assign(el("div", "empty"), {
+      innerText: view === "today" ? "يومك فاضي 🎉\nأضف تذكير من فوق" : "ما فيه تذكيرات بعد",
+    }));
+  }
+}
+
+function toggleReminder(it) {
+  const today = todayStr();
+  if (it.done) {
+    const { done_at, ...rest } = it;
+    change({ ...rest, done: false });
+  } else if (!(it.done_at === today && it.date !== today)) {
+    finish(it);
+  }
+}
+
+function finish(it) {
+  const next = { ...it, done_at: todayStr() };
+  if (it.daily) {
+    next.date = ymd(addDays(dueDt(it), 1));
+    next.fired = false;
+    next.sent = [];
+  } else next.done = true;
+  change(next);
+}
+
+// ---------- النماذج ----------
+$("section").onclick = (e) => { if (e.target.dataset.v) { section = e.target.dataset.v; render(); } };
+$("view").onclick = (e) => { if (e.target.dataset.v) { view = e.target.dataset.v; render(); } };
+
+function paintUrgent() {
+  const b = $("urgent-btn");
+  b.textContent = urgent ? "🔥 مستعجلة" : "عادية";
+  b.className = "btn " + (urgent ? "urgent" : "ghost");
+}
+$("urgent-btn").onclick = () => { urgent = !urgent; paintUrgent(); };
+
+$("task-form").onsubmit = (e) => {
+  e.preventDefault();
+  const title = $("task-title").value.trim();
+  if (!title) return $("task-title").focus();
+  change({ id: crypto.randomUUID().replaceAll("-", ""), kind: "task", title, urgent, done: false });
+  $("task-title").value = "";
+};
+
+function paintDays() {
+  const chosen = $("rem-date").value;
+  document.querySelectorAll("[data-day]").forEach((b) => {
+    b.classList.toggle("on", ymd(addDays(new Date(), +b.dataset.day)) === chosen);
+  });
+}
+document.querySelectorAll("[data-day]").forEach((b) => {
+  b.onclick = () => { $("rem-date").value = ymd(addDays(new Date(), +b.dataset.day)); paintDays(); };
+});
+$("rem-date").onchange = paintDays;
+$("has-end").onchange = () => { $("rem-end").disabled = !$("has-end").checked; };
+
+let flashTimer;
+function flash(text, color = "var(--green)") {
+  const f = $("flash");
+  f.textContent = text;
+  f.style.color = color;
+  clearTimeout(flashTimer);
+  flashTimer = setTimeout(() => (f.textContent = ""), 4000);
+}
+
+function resetReminderForm() {
+  const now = new Date();
+  $("rem-date").value = todayStr();
+  $("rem-date").min = todayStr();
+  $("rem-start").value = hm(now);
+  $("rem-end").value = hm(new Date(now.getTime() + 3600000));
+  paintDays();
+}
+
+$("rem-form").onsubmit = (e) => {
+  e.preventDefault();
+  const title = $("rem-title").value.trim();
+  const date = $("rem-date").value, start = $("rem-start").value;
+  const end = $("has-end").checked ? $("rem-end").value : null;
+  if (!title) { $("rem-title").focus(); return flash("اكتب التذكير أول", "var(--red)"); }
+  if (!date || !start || ($("has-end").checked && !end)) return flash("حدد اليوم والوقت", "var(--red)");
+  if (end === start) return flash("وقت النهاية نفس البداية", "var(--red)");
+  if (Object.values(items).some((i) => kind(i) === "reminder" && !i.done && i.title === title && i.date === date && i.time === start)) {
+    return flash("هذا التذكير موجود من قبل", "var(--urgent)");
+  }
+  change({
+    id: crypto.randomUUID().replaceAll("-", ""), kind: "reminder", title, date, time: start, end,
+    daily: $("rem-daily").checked, done: false, fired: false, sent: [],
+  });
+  $("rem-title").value = "";
+  flash(`✓ انضاف  •  ${dayLabel(date)} ${fmt12(start)}`);
+  if (view === "today" && date !== todayStr()) { view = "all"; render(); }
+};
+
+// ---------- التنبيهات ----------
+const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+
+function b64ToBytes(s) {
+  const raw = atob((s + "=".repeat((4 - (s.length % 4)) % 4)).replace(/-/g, "+").replace(/_/g, "/"));
+  return Uint8Array.from(raw, (c) => c.charCodeAt(0));
+}
+
+async function paintNotify() {
+  const box = $("notify");
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    // في سفاري العادي ما فيه تنبيهات: لازم يضيفه على الشاشة الرئيسية
+    if (!standalone && /iphone|ipad/i.test(navigator.userAgent)) {
+      box.querySelector("b").textContent = "📲 أضفه للشاشة الرئيسية";
+      box.querySelector("p").textContent = "اضغط زر المشاركة ⬆️ ثم «إضافة إلى الشاشة الرئيسية»، وافتحه من هناك عشان تشتغل التنبيهات";
+      $("notify-btn").classList.add("hidden");
+      box.classList.remove("hidden");
+    }
+    return;
+  }
+  const reg = await navigator.serviceWorker.ready;
+  const sub = await reg.pushManager.getSubscription();
+  box.classList.toggle("hidden", !!sub && Notification.permission === "granted");
+  if (sub) saveSub(sub); // نتأكد إنه محفوظ في السيرفر
+}
+
+async function saveSub(sub) {
+  const json = sub.toJSON();
+  await sb.from("push_subs").upsert({ endpoint: json.endpoint, sub: json }, { onConflict: "endpoint" });
+}
+
+$("notify-btn").onclick = async () => {
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== "granted") return alert("لازم تسمح بالتنبيهات من الإعدادات");
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(VAPID_PUBLIC) });
+    await saveSub(sub);
+    $("notify").classList.add("hidden");
+  } catch (e) {
+    alert("ما قدرت أفعّل التنبيهات: " + e.message);
+  }
+};
+
+// ---------- الدخول ----------
+async function checkSession() {
+  const { data } = await sb.auth.getSession();
+  const signedIn = !!data.session;
+  $("login").classList.toggle("hidden", signedIn);
+  $("app").classList.toggle("hidden", !signedIn);
+  return signedIn;
+}
+
+$("login-btn").onclick = async () => {
+  const msg = $("login-msg");
+  msg.style.color = "var(--muted)";
+  msg.textContent = "لحظة...";
+  const { error } = await sb.auth.signInWithPassword({ email: $("email").value.trim(), password: $("password").value });
+  if (error) {
+    msg.style.color = "var(--red)";
+    msg.textContent = /invalid/i.test(error.message) ? "الإيميل أو كلمة المرور غلط" : error.message;
+    return;
+  }
+  msg.textContent = "";
+  start();
+};
+$("password").onkeydown = (e) => { if (e.key === "Enter") $("login-btn").click(); };
+
+$("logout").onclick = async () => {
+  await sb.auth.signOut();
+  items = {}; queue = {}; since = null;
+  persist();
+  checkSession();
+};
+
+let timer;
+async function start() {
+  if (!(await checkSession())) return;
+  resetReminderForm();
+  paintUrgent();
+  render();
+  paintNotify();
+  sync();
+  clearInterval(timer);
+  timer = setInterval(() => { if (!document.hidden) sync(); }, 4000);
+  setInterval(render, 60000);
+}
+
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { sync(); render(); } });
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
+start();
+</script>
+</body>
+</html>
