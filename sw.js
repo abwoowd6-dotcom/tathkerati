@@ -1,4 +1,4 @@
-const CACHE = "reminders-v3";
+﻿const CACHE = "reminders-v4";
 const SHELL = ["./", "index.html", "manifest.webmanifest", "icon-180.png", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", (e) => {
@@ -11,7 +11,7 @@ self.addEventListener("activate", (e) => {
   self.clients.claim();
 });
 
-// النت أول عشان التحديثات توصل، والنسخة المحفوظة لو ما فيه نت
+// ط§ظ„ظ†طھ ط£ظˆظ„ ط¹ط´ط§ظ† ط§ظ„طھط­ط¯ظٹط«ط§طھ طھظˆطµظ„طŒ ظˆط§ظ„ظ†ط³ط®ط© ط§ظ„ظ…ط­ظپظˆط¸ط© ظ„ظˆ ظ…ط§ ظپظٹظ‡ ظ†طھ
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== "GET" || url.hostname.endsWith("supabase.co")) return;
@@ -30,8 +30,8 @@ self.addEventListener("fetch", (e) => {
 
 self.addEventListener("push", (e) => {
   let d = {};
-  try { d = e.data.json(); } catch { d = { title: e.data?.text() || "تذكير" }; }
-  e.waitUntil(self.registration.showNotification(d.head || "⏰ تذكير", {
+  try { d = e.data.json(); } catch { d = { title: e.data?.text() || "طھط°ظƒظٹط±" }; }
+  e.waitUntil(self.registration.showNotification(d.head || "âڈ° طھط°ظƒظٹط±", {
     body: d.title + (d.when ? `\n${d.when}` : ""),
     tag: d.tag,
     icon: "icon-192.png",

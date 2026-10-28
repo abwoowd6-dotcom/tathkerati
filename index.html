@@ -102,6 +102,19 @@
   .seg button { padding: 6px 14px; border-radius: 9px; font-size: 13px; font-weight: 700; color: var(--muted); }
   .seg button.on { background: var(--surface-2); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
 
+  .projects { display: flex; gap: 8px; overflow-x: auto; margin: 14px -18px 0; padding: 2px 18px 4px; scrollbar-width: none; }
+  .projects::-webkit-scrollbar { display: none; }
+  .pchip { flex: none; display: flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 99px; font-size: 14px;
+           font-weight: 650; background: var(--surface); border: 1px solid var(--line); color: var(--text); white-space: nowrap; }
+  .pchip i { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .pchip span { color: var(--faint); font-weight: 600; font-size: 12.5px; }
+  .pchip.on { background: var(--pc, var(--accent)); border-color: transparent; color: #0d0e13; }
+  .pchip.on i { background: #0d0e13 !important; opacity: .5; }
+  .pchip.on span { color: rgba(13, 14, 19, .6); }
+  .pchip.add { color: var(--muted); border-style: dashed; background: transparent; }
+  .ptag { display: inline-flex; align-items: center; gap: 5px; }
+  .ptag i { width: 7px; height: 7px; border-radius: 50%; }
+  .swatches { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
   .progress { height: 6px; background: var(--surface-2); border-radius: 99px; overflow: hidden; margin: 12px 2px 0; }
   .progress i { display: block; height: 100%; background: var(--green); border-radius: 99px; transition: width .4s ease; }
   .progress-label { font-size: 12px; color: var(--muted); margin: 6px 2px 0; }
@@ -307,6 +320,7 @@
           <button data-v="all">الكل</button>
         </div>
       </div>
+      <div class="projects hidden" id="projects"></div>
       <div class="progress"><i id="prog-bar" style="width:0"></i></div>
       <div class="progress-label" id="prog-label"></div>
       <div id="list"></div>
@@ -396,8 +410,11 @@
   </div>
   <input class="field" id="add-title" enterkeyhint="done">
 
-  <div id="task-opts" class="row">
-    <button type="button" class="chip hot" id="urgent-chip">🔥 مستعجلة</button>
+  <div id="task-opts">
+    <div class="row">
+      <button type="button" class="chip hot" id="urgent-chip">🔥 مستعجلة</button>
+    </div>
+    <div class="row" id="add-projects"></div>
   </div>
 
   <div id="rem-opts">
@@ -644,7 +661,9 @@ function card(it, done, meta, metaColor, onTick, flag, urgentRing) {
   const body = el("div", "body");
   body.append(el("div", "title" + (done ? " done" : ""), it.title));
   if (meta) {
-    const m = el("div", "meta", meta);
+    const m = el("div", "meta");
+    if (typeof meta === "string") m.textContent = meta;
+    else m.append(meta);
     if (metaColor) m.style.color = metaColor;
     body.append(m);
   }
@@ -718,18 +737,131 @@ function render() {
   $("view").classList.toggle("hidden", tab !== "reminders");
   document.querySelectorAll("#view button").forEach((b) => b.classList.toggle("on", b.dataset.v === view));
 
+  renderProjects();
   const list = $("list");
   list.replaceChildren();
   if (tab === "tasks") renderTasks(list, tasks);
   else renderReminders(list, rems, now);
 }
 
+// ---------- الأقسام ----------
+const PROJECT_COLORS = ["#8b9dff", "#5bb8f5", "#4cc9a0", "#f5a25d", "#f28bb0", "#b18cff"];
+let project = null; // القسم المختار (null = الكل)
+const projects = () => Object.values(items).filter((i) => kind(i) === "project").sort((a, b) => (a.order || 0) - (b.order || 0));
+const projectOf = (id) => (id && items[id] && kind(items[id]) === "project" ? items[id] : null);
+
+function pchip(text, color, on, count, onClick) {
+  const b = el("button", "pchip" + (on ? " on" : ""));
+  if (color) {
+    const dot = el("i");
+    dot.style.background = color;
+    b.append(dot);
+    b.style.setProperty("--pc", color);
+  }
+  b.append(document.createTextNode(text));
+  if (count) b.append(el("span", "", String(count)));
+  b.onclick = onClick;
+  return b;
+}
+
+function renderProjects() {
+  const box = $("projects");
+  box.classList.toggle("hidden", tab !== "tasks");
+  if (tab !== "tasks") return;
+  if (project && !projectOf(project)) project = null; // انحذف من جهاز ثاني
+  const counts = {};
+  for (const i of Object.values(items)) if (kind(i) === "task" && !i.done) counts[i.project || ""] = (counts[i.project || ""] || 0) + 1;
+  const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  box.replaceChildren(pchip("الكل", null, project === null, total, () => { project = null; render(); }));
+  for (const p of projects()) {
+    // ضغطة على القسم المختار تفتح تعديله
+    box.append(pchip(p.name, p.color, project === p.id, counts[p.id], () => {
+      if (project === p.id) projectDialog(p);
+      else { project = p.id; render(); }
+    }));
+  }
+  const add = el("button", "pchip add", "＋ قسم");
+  add.onclick = () => projectDialog(null);
+  box.append(add);
+}
+
+function projectDialog(p) {
+  const d = el("div", "dialog");
+  const box = el("div", "dialog-box");
+  box.append(el("h4", "", p ? "تعديل القسم" : "قسم جديد"),
+             el("p", "", p ? "غيّر الاسم أو اللون" : "مثلاً: مشروع برمجي، البيت، الدوام"));
+  const input = el("input", "field");
+  input.placeholder = "اسم القسم";
+  input.value = p ? p.name : "";
+  let color = p ? p.color : PROJECT_COLORS[projects().length % PROJECT_COLORS.length];
+  const sw = el("div", "swatches");
+  const paint = () => sw.querySelectorAll(".color").forEach((b) => b.classList.toggle("on", b.dataset.c === color));
+  for (const c of PROJECT_COLORS) {
+    const b = el("button", "color");
+    b.style.background = c;
+    b.dataset.c = c;
+    b.onclick = () => { color = c; paint(); };
+    sw.append(b);
+  }
+  paint();
+  const acts = el("div", "sheet-actions");
+  const ok = el("button", "btn", p ? "حفظ" : "إضافة");
+  const no = el("button", "btn soft", "إلغاء");
+  acts.append(ok, no);
+  box.append(input, sw, acts);
+  if (p) {
+    const del = el("button", "btn danger wide", "حذف القسم");
+    del.style.marginTop = "10px";
+    del.onclick = async () => {
+      const n = Object.values(items).filter((i) => kind(i) === "task" && i.project === p.id).length;
+      close();
+      if (!(await confirmBox("حذف القسم؟", n ? `مهامه (${n}) ما بتنحذف، بتصير بدون قسم` : `بينحذف «${p.name}»`, "حذف"))) return;
+      for (const i of Object.values(items)) if (kind(i) === "task" && i.project === p.id) change({ ...i, project: null });
+      remove(p.id);
+      project = null;
+      render();
+      toast("انحذف القسم");
+    };
+    box.append(del);
+  }
+  d.append(box);
+  document.body.append(d);
+  setTimeout(() => input.focus(), 50);
+  const close = () => d.remove();
+  no.onclick = close;
+  d.onclick = (e) => { if (e.target === d) close(); };
+  ok.onclick = () => {
+    const name = input.value.trim();
+    if (!name) return input.focus();
+    if (p) change({ ...p, name, color });
+    else {
+      const id = crypto.randomUUID().replaceAll("-", "");
+      const order = Math.max(0, ...projects().map((x) => x.order || 0)) + 1;
+      change({ id, kind: "project", name, color, done: false, order });
+      project = id;
+    }
+    close();
+    render();
+  };
+  input.onkeydown = (e) => { if (e.key === "Enter") ok.click(); };
+}
+
+function projectTag(p) {
+  const t = el("span", "ptag");
+  const dot = el("i");
+  dot.style.background = p.color;
+  t.append(dot, document.createTextNode(p.name));
+  t.style.color = p.color;
+  return t;
+}
+
 function renderTasks(list, tasks) {
+  if (project) tasks = tasks.filter((i) => i.project === project);
   const urg = tasks.filter((i) => !i.done && i.urgent);
   const normal = tasks.filter((i) => !i.done && !i.urgent);
   const done = tasks.filter((i) => i.done);
   setProgress(done.length, tasks.length, tasks.length ? `خلّصت ${done.length} من ${tasks.length}` : "");
-  if (!tasks.length) return empty(list, "🎉", "ما فيه مهام. اضغط ＋ تحت عشان تضيف");
+  if (!tasks.length) return empty(list, "🎉", project ? "ما فيه مهام في هذا القسم. اضغط ＋ عشان تضيف" : "ما فيه مهام. اضغط ＋ تحت عشان تضيف");
   const groups = [
     ["🔥 مستعجلة", "var(--orange)", urg],
     ["عادية", "var(--accent)", normal],
@@ -748,7 +880,8 @@ function renderTasks(list, tasks) {
         flag.append(icon("flag", 17));
         flag.onclick = () => change({ ...it, urgent: !it.urgent });
       }
-      list.append(card(it, it.done, "", null, () => change({ ...it, done: !it.done }), flag, it.urgent));
+      const p = project ? null : projectOf(it.project);
+      list.append(card(it, it.done, p ? projectTag(p) : "", null, () => change({ ...it, done: !it.done }), flag, it.urgent));
     }
   }
 }
@@ -822,9 +955,15 @@ document.querySelectorAll(".tab").forEach((b) => { b.onclick = () => { tab = b.d
 $("view").onclick = (e) => { if (e.target.dataset.v) { view = e.target.dataset.v; render(); } };
 
 // ---------- ورقة الإضافة ----------
-let addKind = "tasks", urgent = false, hasEnd = false, daily = false;
+let addKind = "tasks", urgent = false, hasEnd = false, daily = false, addProject = null;
 
 function paintSheet() {
+  const ap = $("add-projects");
+  ap.replaceChildren();
+  if (projects().length) {
+    ap.append(pchip("بدون قسم", null, addProject === null, 0, () => { addProject = null; paintSheet(); }));
+    for (const p of projects()) ap.append(pchip(p.name, p.color, addProject === p.id, 0, () => { addProject = p.id; paintSheet(); }));
+  }
   document.querySelectorAll("#add-kind button").forEach((b) => b.classList.toggle("on", b.dataset.v === addKind));
   $("task-opts").classList.toggle("hidden", addKind !== "tasks");
   $("rem-opts").classList.toggle("hidden", addKind !== "reminders");
@@ -847,7 +986,7 @@ function openSheet() {
   $("rem-date").min = todayStr();
   $("rem-start").value = hm(now);
   $("rem-end").value = hm(new Date(now.getTime() + 3600000));
-  urgent = false; hasEnd = false; daily = false;
+  urgent = false; hasEnd = false; daily = false; addProject = project;
   $("add-title").value = "";
   $("flash").textContent = "";
   paintSheet();
@@ -885,7 +1024,7 @@ $("sheet").onsubmit = (e) => {
   if (!title) { $("add-title").focus(); return flash(addKind === "tasks" ? "اكتب المهمة أول" : "اكتب التذكير أول"); }
   const id = crypto.randomUUID().replaceAll("-", "");
   if (addKind === "tasks") {
-    change({ id, kind: "task", title, urgent, done: false });
+    change({ id, kind: "task", title, urgent, done: false, project: addProject });
     closeSheet();
     tab = "tasks";
     render();

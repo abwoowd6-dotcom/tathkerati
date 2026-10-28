@@ -55,6 +55,9 @@ RED = "#ff6b7a"
 URGENT = "#ff8a4c"
 KEY = "systemTransparent" if IS_MAC else "#010101"  # لون شفاف لزوايا الإشعار
 
+PROJECT_COLORS = ["#8b9dff", "#5bb8f5", "#4cc9a0", "#f5a25d", "#f28bb0", "#b18cff"]
+PROJECT_COLOR_NAMES = ["بنفسجي فاتح", "أزرق", "أخضر", "برتقالي", "وردي", "بنفسجي"]
+
 DAYS = ["الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت", "الأحد"]
 MONTHS = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
           "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"]
@@ -337,6 +340,7 @@ class App:
         self.section = "المهام"
         self.view = "اليوم"
         self.urgent = False
+        self.project = None  # القسم المختار في المهام (None = الكل)
         self.editing = False
         self.toasts = {}
         self.quick = None
@@ -438,7 +442,8 @@ class App:
         # الرأس: بس العنوان والتاريخ. ضغطة عليه تطلع الخيارات، والسحب يحرّك الويدجت
         head = ctk.CTkFrame(box, fg_color="transparent", cursor="hand2")
         head.pack(fill="x", padx=18, pady=(16, 0))
-        t1 = ctk.CTkLabel(head, text="مهامي", font=font(17, "bold"), text_color=self.W_TEXT, anchor="e", height=22)
+        t1 = self.widget_title = ctk.CTkLabel(head, text="مهامي", font=font(17, "bold"), text_color=self.W_TEXT,
+                                              anchor="e", height=22)
         t1.pack(fill="x")
         self.widget_sub = ctk.CTkLabel(head, text="", font=font(11), text_color=self.W_MUTED, anchor="e", height=16)
         self.widget_sub.pack(fill="x")
@@ -484,6 +489,14 @@ class App:
         m = tk.Menu(self.root, tearoff=0)
         m.add_command(label="فتح البرنامج", command=self.show)
         m.add_command(label=("✓  " if top else "     ") + "فوق كل النوافذ", command=self.flip_widget_top)
+        cur = self.widget_prefs().get("project")
+        pm = tk.Menu(m, tearoff=0)
+        pm.add_command(label=("✓  " if cur is None else "     ") + "كل المهام",
+                       command=lambda: self.widget_project(None))
+        for p in self.projects():
+            pm.add_command(label=("✓  " if cur == p["id"] else "     ") + p["name"],
+                           command=lambda pid=p["id"]: self.widget_project(pid))
+        m.add_cascade(label="     القسم", menu=pm)
         m.add_separator()
         m.add_command(label="إخفاء الويدجت", command=self.toggle_widget)
         m.tk_popup(x, y)
@@ -491,6 +504,10 @@ class App:
     def widget_right_click(self, e):
         if self.widget is not None and str(e.widget).startswith(str(self.widget)):
             self.widget_menu(e.x_root, e.y_root)
+
+    def widget_project(self, pid):
+        self.save_widget_prefs(project=pid)
+        self.render_widget()
 
     def flip_widget_top(self):
         top = not self.widget_prefs().get("top")
@@ -544,6 +561,10 @@ class App:
         for c in self.widget_body.winfo_children():
             c.destroy()
         all_tasks = [i for i in self.items if kind(i) == "task"]
+        p = self.projects_by_id().get(self.widget_prefs().get("project"))
+        if p:
+            all_tasks = [i for i in all_tasks if i.get("project") == p["id"]]
+        self.widget_title.configure(text=p["name"] if p else "مهامي", text_color=p["color"] if p else self.W_TEXT)
         tasks = [i for i in all_tasks if not i["done"]]
         tasks.sort(key=lambda i: not i.get("urgent"))
         done = len(all_tasks) - len(tasks)
@@ -774,6 +795,7 @@ class App:
         self.sub_holder.pack(fill="x", padx=26)
         self.sub_tabs = self.seg(self.sub_holder, ["الكل", "اليوم"], self.show_view, height=34)
         self.sub_tabs.set("اليوم")
+        self.build_projects_bar()
 
         foot = ctk.CTkFrame(r, fg_color="transparent")
         foot.pack(side="bottom", fill="x", padx=26, pady=(0, 14))
@@ -1051,8 +1073,10 @@ class App:
         self.task_form.pack_forget()
         self.rem_form.pack_forget()
         self.sub_tabs.pack_forget()
+        self.proj_bar.pack_forget()
         if section == "المهام":
             self.task_form.pack(fill="x")
+            self.proj_bar.pack(fill="x", pady=(12, 0))
         else:
             self.rem_form.pack(fill="x")
             self.sub_tabs.pack(fill="x", pady=(14, 0))
@@ -1115,7 +1139,10 @@ class App:
 
     def task_card(self, it):
         done = it["done"]
-        c, left = self.base_card(it, done, MUTED if done else TEXT, "", MUTED,
+        # لو نعرض كل الأقسام، نكتب اسم قسم المهمة تحتها بلونه
+        p = self.projects_by_id().get(it.get("project")) if self.project is None else None
+        meta, meta_color = (f"●  {p['name']}", p["color"]) if p else ("", MUTED)
+        c, left = self.base_card(it, done, MUTED if done else TEXT, meta, MUTED if done else meta_color,
                                  lambda: self.toggle_task(it))
         if not done:
             urgent = it.get("urgent", False)
@@ -1187,7 +1214,10 @@ class App:
             self.tray.title = f"تذكيراتي — {pending} مهام باقية" if pending else "تذكيراتي"
 
     def refresh_tasks(self):
+        self.paint_projects()
         tasks = [i for i in self.items if kind(i) == "task"]
+        if self.project is not None:
+            tasks = [i for i in tasks if i.get("project") == self.project]
         urgent = [i for i in tasks if not i["done"] and i.get("urgent")]
         normal = [i for i in tasks if not i["done"] and not i.get("urgent")]
         done = [i for i in tasks if i["done"]]
@@ -1198,7 +1228,7 @@ class App:
         self.bar.set(len(done) / total if total else 0)
 
         if not tasks:
-            self.empty("ما فيه مهام 🎉\nأضف مهمة من فوق")
+            self.empty("ما فيه مهام في هذا القسم 🎉\nأضف مهمة من فوق" if self.project else "ما فيه مهام 🎉\nأضف مهمة من فوق")
             return
         for title, color, group, action in (
                 ("🔥  مستعجلة", URGENT, urgent, None),
@@ -1411,10 +1441,122 @@ class App:
             self.task_title.focus()
             return
         self.items.append({"id": uuid.uuid4().hex, "kind": "task", "title": text,
-                           "urgent": self.urgent, "done": False})
+                           "urgent": self.urgent, "done": False, "project": self.project})
         save(self.items)
         self.task_title.delete(0, "end")
         self.refresh()
+
+    # ---------- الأقسام ----------
+    def projects(self):
+        return sorted((i for i in self.items if kind(i) == "project"), key=lambda p: p.get("order", 0))
+
+    def projects_by_id(self):
+        return {p["id"]: p for p in self.projects()}
+
+    def build_projects_bar(self):
+        self.proj_bar = ctk.CTkFrame(self.sub_holder, fg_color="transparent", height=36)
+
+    def paint_projects(self):
+        bar = self.proj_bar
+        for c in bar.winfo_children():
+            c.destroy()
+        projects = self.projects()
+        if self.project is not None and self.project not in {p["id"] for p in projects}:
+            self.project = None  # انحذف القسم من جهاز ثاني
+        counts = {}
+        for i in self.items:
+            if kind(i) == "task" and not i["done"]:
+                counts[i.get("project")] = counts.get(i.get("project"), 0) + 1
+
+        def chip(text, on, color, cmd, pid=None):
+            b = ctk.CTkButton(bar, text=text, height=32, corner_radius=16, font=font(13, "bold" if on else "normal"),
+                              width=10, fg_color=color if on else FIELD, hover_color=FIELD_HOVER,
+                              text_color="#0d0e13" if on else TEXT, command=cmd)
+            b.pack(side="right", padx=(0, 6))
+            if pid:
+                b.bind("<Button-3>", lambda e: self.project_menu(pid, e))
+                if IS_MAC:
+                    b.bind("<Button-2>", lambda e: self.project_menu(pid, e))
+            return b
+
+        total = sum(counts.values())
+        chip(f"الكل  {total}" if total else "الكل", self.project is None, ACCENT, lambda: self.pick_project(None))
+        for p in projects:
+            n = counts.get(p["id"], 0)
+            on = self.project == p["id"]
+            label = f"●  {p['name']}" + (f"  {n}" if n else "")
+            b = chip(label, on, p["color"], lambda pid=p["id"]: self.pick_project(pid), p["id"])
+            if not on:
+                b.configure(text_color=p["color"])
+        ctk.CTkButton(bar, text="＋  قسم", height=32, width=10, corner_radius=16, font=font(13),
+                      fg_color="transparent", border_width=1, border_color=FIELD_HOVER, hover_color=FIELD,
+                      text_color=MUTED, command=self.new_project).pack(side="right")
+
+    def pick_project(self, pid):
+        self.project = pid
+        p = self.projects_by_id().get(pid)
+        self.task_title.configure(placeholder_text=f"مهمة جديدة في «{p['name']}»" if p else
+                                  "وش المهمة؟ (تنفذها في أي وقت)")
+        self.refresh()
+
+    def ask_name(self, title, initial=""):
+        d = ctk.CTkInputDialog(title=title, text="اسم القسم:", font=font(13), fg_color=BG,
+                               button_fg_color=ACCENT, button_hover_color=ACCENT_HOVER, entry_fg_color=FIELD,
+                               entry_border_color=FIELD_HOVER, entry_text_color=TEXT)
+        if initial:
+            d.after(150, lambda: d._entry.insert(0, initial))
+        name = d.get_input()
+        return name.strip() if name else ""
+
+    def new_project(self):
+        name = self.ask_name("قسم جديد")
+        if not name:
+            return
+        projects = self.projects()
+        color = PROJECT_COLORS[len(projects) % len(PROJECT_COLORS)]
+        pid = uuid.uuid4().hex
+        self.items.append({"id": pid, "kind": "project", "name": name, "color": color, "done": False,
+                           "order": max((p.get("order", 0) for p in projects), default=0) + 1})
+        save(self.items)
+        self.pick_project(pid)
+
+    def project_menu(self, pid, e):
+        p = self.projects_by_id()[pid]
+        m = tk.Menu(self.root, tearoff=0)
+        m.add_command(label="تغيير الاسم", command=lambda: self.rename_project(p))
+        colors = tk.Menu(m, tearoff=0)
+        for name, c in zip(PROJECT_COLOR_NAMES, PROJECT_COLORS):
+            colors.add_command(label=("✓  " if p["color"] == c else "     ") + name,
+                               command=lambda c=c: self.recolor_project(p, c))
+        m.add_cascade(label="اللون", menu=colors)
+        m.add_separator()
+        m.add_command(label="حذف القسم", command=lambda: self.delete_project(p))
+        m.tk_popup(e.x_root, e.y_root)
+
+    def rename_project(self, p):
+        name = self.ask_name("تغيير اسم القسم", p["name"])
+        if name:
+            p["name"] = name
+            save(self.items)
+            self.pick_project(self.project)
+
+    def recolor_project(self, p, color):
+        p["color"] = color
+        save(self.items)
+        self.refresh()
+
+    def delete_project(self, p):
+        from tkinter import messagebox
+        n = sum(1 for i in self.items if kind(i) == "task" and i.get("project") == p["id"])
+        msg = f"بينحذف قسم «{p['name']}»." + (f"\nمهامه ({n}) ما بتنحذف، بتصير بدون قسم." if n else "")
+        if not messagebox.askyesno("حذف القسم", msg, parent=self.root):
+            return
+        for i in self.items:
+            if kind(i) == "task" and i.get("project") == p["id"]:
+                i["project"] = None
+        self.items.remove(p)
+        save(self.items)
+        self.pick_project(None)
 
     def add_reminder(self):
         text = self.title.get().strip()
