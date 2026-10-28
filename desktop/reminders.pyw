@@ -461,21 +461,7 @@ class App:
         self.widget_prog.pack(fill="x", padx=18)
 
         self.widget_body = ctk.CTkFrame(box, fg_color="transparent")
-        self.widget_body.pack(fill="x", padx=12, pady=(4, 0))
-
-        # خانة الإضافة
-        add_row = ctk.CTkFrame(box, fg_color=self.W_ROW, corner_radius=14, height=40)
-        add_row.pack(fill="x", padx=12, pady=(10, 14))
-        add = ctk.CTkEntry(add_row, height=38, corner_radius=14, fg_color=self.W_ROW, border_width=0,
-                           justify="right", placeholder_text="مهمة جديدة…", placeholder_text_color=self.W_FAINT,
-                           font=font(13), text_color=self.W_TEXT)
-        ctk.CTkButton(add_row, text="＋", width=30, height=30, corner_radius=10, fg_color=self.W_ACCENT,
-                      hover_color="#7a8cf0", text_color="#0d0e13", font=font(15, "bold"),
-                      command=lambda: self.widget_add(add)).pack(side="left", padx=(5, 0), pady=4)
-        add.pack(side="right", fill="x", expand=True, padx=(0, 4))
-        add.bind("<Button-1>", lambda e: (w.focus_force(), add.focus_set()))
-        add.bind("<Return>", lambda e: self.widget_add(add))
-        add.bind("<Escape>", lambda e: self.root.focus_set())
+        self.widget_body.pack(fill="x", padx=12, pady=(4, 14))
 
         self.render_widget()
         w.update_idletasks()
@@ -526,15 +512,6 @@ class App:
         else:
             self.save_widget_prefs(x=self.widget.winfo_x(), y=self.widget.winfo_y())
 
-    def widget_add(self, entry):
-        text = entry.get().strip()
-        if not text:
-            return
-        self.items.append({"id": uuid.uuid4().hex, "kind": "task", "title": text, "urgent": False, "done": False})
-        save(self.items)
-        entry.delete(0, "end")
-        self.refresh()
-
     def widget_done(self, it, btn):
         # علامة صح خضرا، وبعدها تختفي المهمة
         btn.configure(text="✓", fg_color=self.W_GREEN, border_color=self.W_GREEN, state="disabled")
@@ -583,7 +560,7 @@ class App:
             ctk.CTkLabel(e, text="✓", font=font(26, "bold"), text_color=self.W_GREEN, height=30).pack()
             ctk.CTkLabel(e, text="خلّصت كل مهامك", font=font(13, "bold"), text_color=self.W_TEXT,
                          height=20).pack()
-            ctk.CTkLabel(e, text="أضف مهمة من تحت", font=font(11), text_color=self.W_MUTED, height=16).pack()
+            ctk.CTkLabel(e, text="ما باقي شي اليوم", font=font(11), text_color=self.W_MUTED, height=16).pack()
 
         limit = 7
         for it in tasks[:limit]:
