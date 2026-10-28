@@ -91,6 +91,9 @@
   #login p { color: var(--muted); font-size: 14px; margin: 6px 0 18px; }
   #login .text-in { margin-top: 10px; direction: ltr; text-align: right; }
   #login .btn { width: 100%; margin-top: 14px; padding: 13px; }
+  .pw-wrap { position: relative; }
+  .pw-wrap .text-in { padding-left: 48px; }
+  #pw-eye { position: absolute; left: 6px; bottom: 6px; width: 38px; height: 36px; border-radius: 10px; opacity: .7; }
   .msg { font-size: 13px; font-weight: 700; margin-top: 10px; min-height: 1em; }
   .foot { text-align: center; margin-top: 30px; }
   .foot button { color: var(--muted); font-size: 13px; }
@@ -102,9 +105,14 @@
   <h2>☁️ تذكيراتي</h2>
   <p>سجّل دخول بنفس الإيميل وكلمة المرور اللي في برنامج الكمبيوتر</p>
   <input id="email" class="text-in" type="email" autocomplete="username" placeholder="الإيميل" value="abwoowd2@gmail.com">
-  <input id="password" class="text-in" type="password" autocomplete="current-password" placeholder="كلمة المرور">
+  <div class="pw-wrap">
+    <input id="password" class="text-in" type="password" autocomplete="current-password" placeholder="كلمة المرور"
+           autocapitalize="none" autocorrect="off" spellcheck="false">
+    <button type="button" id="pw-eye" aria-label="إظهار كلمة المرور">👁</button>
+  </div>
   <button id="login-btn" class="btn">دخول</button>
   <div id="login-msg" class="msg"></div>
+  <div class="foot"><button id="forgot">نسيت كلمة المرور؟</button></div>
 </section>
 
 <main id="app" class="hidden">
@@ -584,7 +592,12 @@ $("login-btn").onclick = async () => {
   const msg = $("login-msg");
   msg.style.color = "var(--muted)";
   msg.textContent = "لحظة...";
-  const { error } = await sb.auth.signInWithPassword({ email: $("email").value.trim(), password: $("password").value });
+  const email = $("email").value.trim().toLowerCase();
+  const raw = $("password").value;
+  // كيبورد الآيفون العربي يكتب الأرقام ١٢٣، والكمبيوتر يكتبها 123
+  const western = raw.replace(/[٠-٩]/g, (d) => d.charCodeAt(0) - 0x660).replace(/[۰-۹]/g, (d) => d.charCodeAt(0) - 0x6f0);
+  let { error } = await sb.auth.signInWithPassword({ email, password: raw });
+  if (error && western !== raw) ({ error } = await sb.auth.signInWithPassword({ email, password: western }));
   if (error) {
     msg.style.color = "var(--red)";
     msg.textContent = /invalid/i.test(error.message) ? "الإيميل أو كلمة المرور غلط" : error.message;
@@ -594,6 +607,29 @@ $("login-btn").onclick = async () => {
   start();
 };
 $("password").onkeydown = (e) => { if (e.key === "Enter") $("login-btn").click(); };
+$("forgot").onclick = async () => {
+  const msg = $("login-msg");
+  const email = $("email").value.trim().toLowerCase();
+  if (!email) return;
+  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+  msg.style.color = error ? "var(--red)" : "var(--green)";
+  msg.textContent = error ? error.message : "✓ انرسل لك إيميل. افتح الرابط اللي فيه وحط كلمة مرور جديدة";
+};
+
+// جا من رابط "نسيت كلمة المرور"
+sb.auth.onAuthStateChange(async (event) => {
+  if (event !== "PASSWORD_RECOVERY") return;
+  const pw = prompt("اكتب كلمة المرور الجديدة (6 حروف أو أكثر، وبالأرقام الإنجليزية)");
+  if (!pw) return;
+  const { error } = await sb.auth.updateUser({ password: pw });
+  alert(error ? "ما تغيّرت: " + error.message : "✓ تغيّرت كلمة المرور. استخدمها في الكمبيوتر بعد");
+  start();
+});
+
+$("pw-eye").onclick = () => {
+  const p = $("password");
+  p.type = p.type === "password" ? "text" : "password";
+};
 
 $("logout").onclick = async () => {
   await sb.auth.signOut();
