@@ -30,6 +30,7 @@ DATA_FILE = os.path.join(APP_DIR, "reminders.json")
 ICON_FILE = os.path.join(APP_DIR, "icon.ico")
 ICON_PNG = os.path.join(APP_DIR, "icon.png")
 SHOW_FLAG = os.path.join(APP_DIR, ".show")
+WIDGET_FILE = os.path.join(APP_DIR, "widget.json")
 RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 RUN_NAME = "Reminders"
 FONT = "SF Arabic" if IS_MAC else "Segoe UI"
@@ -340,6 +341,7 @@ class App:
         self.toasts = {}
         self.quick = None
         self.quick_closed_at = 0.0
+        self.widget = None
         self.build()
         self.switch_section("المهام")
         self.start_tray()
@@ -348,6 +350,9 @@ class App:
         self.tick()
         self.watch_show_flag()
         self.auto_refresh()
+        if self.widget_prefs().get("on"):
+            self.open_widget()
+            self.widget_switch.select()
 
         self.login_win = None
         CLOUD.on_remote = lambda changes: self.root.after(0, self.apply_remote, changes)
@@ -368,6 +373,7 @@ class App:
             m = tk.Menu(bar, tearoff=0)
             m.add_command(label="ملخص سريع", accelerator="Command+K", command=self.toggle_quick)
             m.add_command(label="إضافة", accelerator="Command+N", command=lambda: (self.show(), self.focus_input()))
+            m.add_command(label="ويدجت المهام", command=self.toggle_widget)
             bar.add_cascade(label="تذكيراتي", menu=m)
             self.root.configure(menu=bar)
             return
@@ -376,11 +382,157 @@ class App:
             # الضغطة الوحدة على الأيقونة تفتح الملخص السريع
             pystray.MenuItem("ملخص سريع", lambda: self.root.after(0, self.toggle_quick), default=True),
             pystray.MenuItem("فتح البرنامج", lambda: self.root.after(0, self.show)),
+            pystray.MenuItem("ويدجت المهام", lambda: self.root.after(0, self.toggle_widget)),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("خروج", lambda: self.root.after(0, self.quit)),
         )
         self.tray = pystray.Icon("reminders", img, "تذكيراتي", menu)
         threading.Thread(target=self.tray.run, daemon=True).start()
+
+    # ---------- ويدجت المهام على سطح المكتب ----------
+    WIDGET_W = 300
+
+    def widget_prefs(self):
+        try:
+            with open(WIDGET_FILE, encoding="utf-8") as f:
+                return json.load(f)
+        except (OSError, ValueError):
+            return {"on": False, "top": False}
+
+    def save_widget_prefs(self, **kw):
+        p = {**self.widget_prefs(), **kw}
+        with open(WIDGET_FILE, "w", encoding="utf-8") as f:
+            json.dump(p, f)
+
+    def toggle_widget(self):
+        if self.widget is not None:
+            self.close_widget()
+        else:
+            self.open_widget()
+        if hasattr(self, "widget_switch"):
+            (self.widget_switch.select if self.widget else self.widget_switch.deselect)()
+
+    def close_widget(self):
+        if self.widget is not None:
+            self.widget.destroy()
+            self.widget = None
+        self.save_widget_prefs(on=False)
+
+    def open_widget(self):
+        p = self.widget_prefs()
+        w = self.widget = tk.Toplevel(self.root)
+        w.overrideredirect(True)  # بدون إطار وبدون أيقونة في شريط المهام
+        w.attributes("-topmost", bool(p.get("top")))
+        w.attributes("-alpha", 0.97)
+        make_transparent(w)
+
+        box = ctk.CTkFrame(w, corner_radius=20, fg_color=CARD, border_width=1,
+                           border_color=FIELD_HOVER, bg_color=KEY, width=self.WIDGET_W)
+        box.pack(fill="both", expand=True)
+
+        head = ctk.CTkFrame(box, fg_color="transparent", cursor="fleur")
+        head.pack(fill="x", padx=14, pady=(12, 4))
+        title = ctk.CTkLabel(head, text="📋  المهام", font=font(15, "bold"), text_color=TEXT)
+        title.pack(side="right")
+        self.widget_count = ctk.CTkLabel(head, text="", font=font(12), text_color=MUTED)
+        self.widget_count.pack(side="right", padx=8)
+        small = dict(width=28, height=28, corner_radius=14, fg_color="transparent", hover_color=FIELD,
+                     font=font(13))
+        ctk.CTkButton(head, text="✕", text_color=MUTED, command=self.toggle_widget, **small).pack(side="left")
+        self.pin_btn = ctk.CTkButton(head, text="📌", command=self.flip_widget_top, **small)
+        self.pin_btn.pack(side="left", padx=2)
+        ctk.CTkButton(head, text="↗", text_color=MUTED, command=self.show, **small).pack(side="left")
+        self.paint_pin()
+
+        # نسحبه من الرأس
+        for wd in (head, title, self.widget_count):
+            wd.bind("<ButtonPress-1>", self.widget_drag_start)
+            wd.bind("<B1-Motion>", self.widget_drag)
+            wd.bind("<ButtonRelease-1>", self.widget_drag_end)
+
+        self.widget_body = ctk.CTkFrame(box, fg_color="transparent")
+        self.widget_body.pack(fill="x", padx=12)
+
+        add = ctk.CTkEntry(box, height=36, corner_radius=12, fg_color=FIELD, border_width=0, justify="right",
+                           placeholder_text="＋  مهمة جديدة (Enter)", font=font(13), text_color=TEXT)
+        add.pack(fill="x", padx=12, pady=(6, 12))
+        add.bind("<Button-1>", lambda e: (w.focus_force(), add.focus_set()))
+        add.bind("<Return>", lambda e: self.widget_add(add))
+        add.bind("<Escape>", lambda e: self.root.focus_set())
+
+        self.render_widget()
+        w.update_idletasks()
+        sw, sh = w.winfo_screenwidth(), w.winfo_screenheight()
+        x = p.get("x", sw - self.WIDGET_W - 24)
+        y = p.get("y", 80)
+        # لو تغيّرت الشاشة وصار برا، نرجّعه
+        x = min(max(0, x), sw - 120)
+        y = min(max(0, y), sh - 120)
+        w.geometry(f"+{x}+{y}")
+        self.save_widget_prefs(on=True)
+
+    def paint_pin(self):
+        top = bool(self.widget_prefs().get("top"))
+        self.pin_btn.configure(text_color=ACCENT if top else MUTED,
+                               fg_color=FIELD if top else "transparent")
+
+    def flip_widget_top(self):
+        top = not self.widget_prefs().get("top")
+        self.save_widget_prefs(top=top)
+        self.widget.attributes("-topmost", top)
+        self.paint_pin()
+
+    def widget_drag_start(self, e):
+        self._drag = (e.x_root - self.widget.winfo_x(), e.y_root - self.widget.winfo_y())
+
+    def widget_drag(self, e):
+        dx, dy = self._drag
+        self.widget.geometry(f"+{e.x_root - dx}+{e.y_root - dy}")
+
+    def widget_drag_end(self, e):
+        self.save_widget_prefs(x=self.widget.winfo_x(), y=self.widget.winfo_y())
+
+    def widget_add(self, entry):
+        text = entry.get().strip()
+        if not text:
+            return
+        self.items.append({"id": uuid.uuid4().hex, "kind": "task", "title": text, "urgent": False, "done": False})
+        save(self.items)
+        entry.delete(0, "end")
+        self.refresh()
+
+    def widget_done(self, it):
+        it["done"] = True
+        save(self.items)
+        self.refresh()
+
+    def render_widget(self):
+        if self.widget is None:
+            return
+        for c in self.widget_body.winfo_children():
+            c.destroy()
+        tasks = [i for i in self.items if kind(i) == "task" and not i["done"]]
+        tasks.sort(key=lambda i: not i.get("urgent"))
+        self.widget_count.configure(text=str(len(tasks)) if tasks else "")
+        if not tasks:
+            ctk.CTkLabel(self.widget_body, text="ما فيه مهام 🎉", font=font(13), text_color=MUTED).pack(pady=14)
+        limit = 8
+        for it in tasks[:limit]:
+            row = ctk.CTkFrame(self.widget_body, fg_color="transparent")
+            row.pack(fill="x", pady=2)
+            urgent = it.get("urgent")
+            ctk.CTkButton(row, text="", width=22, height=22, corner_radius=11, fg_color="transparent",
+                          hover_color=GREEN, border_width=2, border_color=URGENT if urgent else MUTED,
+                          command=lambda it=it: self.widget_done(it)).pack(side="right", padx=(6, 2))
+            ctk.CTkLabel(row, text=("🔥 " if urgent else "") + it["title"], font=font(13), text_color=TEXT,
+                         anchor="e", justify="right", wraplength=self.WIDGET_W - 70).pack(
+                side="right", fill="x", expand=True)
+        if len(tasks) > limit:
+            ctk.CTkLabel(self.widget_body, text=f"و {len(tasks) - limit} غيرها", font=font(11),
+                         text_color=MUTED, anchor="e").pack(fill="x", padx=4)
+        # الطول يتغيّر مع عدد المهام
+        self.widget.update_idletasks()
+        self.widget.geometry(f"{self.WIDGET_W}x{self.widget.winfo_reqheight()}")
 
     # ---------- الملخص السريع ----------
     def toggle_quick(self):
@@ -590,11 +742,12 @@ class App:
         if startup_enabled():
             self.startup.select()
         self.startup.pack(side="right")
+        self.widget_switch = ctk.CTkSwitch(foot, text="ويدجت", font=font(12), text_color=MUTED,
+                                           progress_color=ACCENT, fg_color=FIELD, command=self.toggle_widget)
+        self.widget_switch.pack(side="right", padx=(0, 12))
         self.cloud_btn = ctk.CTkButton(foot, text="", height=26, corner_radius=13, fg_color="transparent",
                                        hover_color=FIELD, font=font(11), command=self.cloud_clicked)
         self.cloud_btn.pack(side="left")
-        ctk.CTkLabel(foot, text="Ctrl+N إضافة  •  دبل كلك للتعديل", font=font(11),
-                     text_color=MUTED).pack(side="left", padx=(8, 0))
 
         self.list = ctk.CTkScrollableFrame(r, fg_color="transparent", corner_radius=0,
                                            scrollbar_button_color=FIELD,
@@ -988,6 +1141,7 @@ class App:
         else:
             self.refresh_reminders(today)
 
+        self.render_widget()
         pending = sum(1 for i in self.items if kind(i) == "task" and not i["done"])
         if getattr(self, "tray", None):
             self.tray.title = f"تذكيراتي — {pending} مهام باقية" if pending else "تذكيراتي"
