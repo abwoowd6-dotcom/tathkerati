@@ -42,7 +42,7 @@ done
 say "أجهّز المكتبات"
 [ -x "$APP/venv/bin/python" ] || "$PY" -m venv "$APP/venv"
 "$APP/venv/bin/python" -m pip install -q --upgrade pip
-"$APP/venv/bin/python" -m pip install -q "customtkinter==5.2.2" "pillow>=10"
+"$APP/venv/bin/python" -m pip install -q "customtkinter==5.2.2" "pillow>=10" certifi
 
 # ---------- التطبيق في مجلد Applications ----------
 say "أسوي التطبيق"

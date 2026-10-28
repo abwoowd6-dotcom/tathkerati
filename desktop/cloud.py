@@ -5,6 +5,7 @@
 """
 import json
 import os
+import ssl
 import threading
 import time
 import urllib.error
@@ -14,6 +15,13 @@ import urllib.request
 URL = "https://cdbegnazbfqzkpvyhvzf.supabase.co"
 KEY = "sb_publishable_d5FCnmtNNXrRDb6NRD4yow__DUo-ICt"
 PULL_EVERY = 4  # ثواني
+
+# بايثون الماك (من python.org) ما يجي معه شهادات الأمان، فنستخدم شهادات certifi لو موجودة
+try:
+    import certifi
+    SSL_CTX = ssl.create_default_context(cafile=certifi.where())
+except ImportError:
+    SSL_CTX = None
 
 
 class AuthError(Exception):
@@ -28,7 +36,7 @@ def _request(method, path, body=None, token=None, headers=None):
     data = json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(URL + path, data=data, method=method, headers=h)
     try:
-        with urllib.request.urlopen(req, timeout=15) as r:
+        with urllib.request.urlopen(req, timeout=15, context=SSL_CTX) as r:
             raw = r.read()
             return json.loads(raw) if raw else None
     except urllib.error.HTTPError as e:
