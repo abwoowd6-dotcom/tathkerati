@@ -98,5 +98,8 @@ EOF
 
 say "✓ خلصنا! أفتح لك تذكيراتي"
 pkill -f "$APP/reminders.pyw" 2>/dev/null || true
-open "$BUNDLE"
+# ننتظر النسخة القديمة تسكّر، وإلا الماك يحاول يكلمها ويطلع خطأ -600
+for _ in 1 2 3 4 5 6 7 8 9 10; do pgrep -f "$APP/reminders.pyw" >/dev/null || break; sleep 0.5; done
+sleep 1
+open "$BUNDLE" 2>/dev/null || { sleep 2; open "$BUNDLE"; }
 echo "  تلقاه بعدين في مجلد Applications حقك، أو ابحث عنه بـ Spotlight (⌘ + مسافة)"
