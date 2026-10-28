@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>تذكيراتي</title>
-<meta name="theme-color" content="#0f1117">
+<meta name="theme-color" content="#0d0e13" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f3f4f8" media="(prefers-color-scheme: light)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -14,171 +15,411 @@
 <link rel="manifest" href="manifest.webmanifest">
 <style>
   :root {
-    --bg: #0f1117; --card: #181b24; --field: #232736; --field-hover: #2d3246;
-    --text: #f3f4f8; --muted: #7d8398; --accent: #6c8cff; --green: #34c98b;
-    --red: #ff6b7a; --urgent: #ff8a4c;
+    --accent: #8b9dff;
+    --bg: #0d0e13;
+    --bg-glow: rgba(139, 157, 255, .10);
+    --surface: #16171e;
+    --surface-2: #1e2029;
+    --line: rgba(255, 255, 255, .06);
+    --text: #eceef4;
+    --muted: #8a8fa3;
+    --faint: #5b6074;
+    --green: #5fd4a0;
+    --red: #ff7d8a;
+    --orange: #ffa56b;
+    --on-accent: #0d0e13;
+    --bar: rgba(16, 17, 23, .82);
+    --shadow: 0 10px 30px rgba(0, 0, 0, .35);
     color-scheme: dark;
+  }
+  :root[data-theme="light"] {
+    --bg: #f3f4f8;
+    --bg-glow: rgba(139, 157, 255, .16);
+    --surface: #ffffff;
+    --surface-2: #eef0f5;
+    --line: rgba(20, 22, 30, .07);
+    --text: #16171d;
+    --muted: #6b7083;
+    --faint: #a3a7b6;
+    --green: #22a874;
+    --red: #e5485b;
+    --orange: #e07b2e;
+    --on-accent: #ffffff;
+    --bar: rgba(255, 255, 255, .82);
+    --shadow: 0 10px 30px rgba(30, 35, 60, .10);
+    color-scheme: light;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; background: var(--bg); color: var(--text); }
   body {
     font-family: -apple-system, BlinkMacSystemFont, "SF Arabic", "Segoe UI", Tahoma, sans-serif;
-    padding: calc(env(safe-area-inset-top) + 14px) 16px calc(env(safe-area-inset-bottom) + 24px);
-    max-width: 560px; margin: 0 auto; min-height: 100vh;
+    min-height: 100vh;
+    background: radial-gradient(120% 60% at 50% -10%, var(--bg-glow), transparent 60%) no-repeat, var(--bg);
+    -webkit-font-smoothing: antialiased;
   }
   button, input { font: inherit; color: inherit; }
-  button { border: 0; cursor: pointer; background: none; }
+  button { border: 0; cursor: pointer; background: none; padding: 0; }
   input { font-size: 16px; } /* أقل من 16 يخلي الآيفون يقرّب الشاشة */
   .hidden { display: none !important; }
+  svg { display: block; }
 
+  .page {
+    max-width: 560px; margin: 0 auto;
+    padding: calc(env(safe-area-inset-top) + 18px) 18px calc(env(safe-area-inset-bottom) + 110px);
+  }
+
+  /* ---------- الرأس ---------- */
   header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-  h1 { font-size: 27px; margin: 4px 0 0; }
-  .date { color: var(--muted); font-size: 14px; margin-top: 2px; }
-  .status { font-size: 12px; padding: 6px 10px; border-radius: 99px; background: var(--card); color: var(--muted); white-space: nowrap; margin-top: 8px; }
-  .status.ok { color: var(--green); }
-  .status.off { color: var(--urgent); }
+  .hello { font-size: 30px; font-weight: 800; letter-spacing: -.3px; margin: 0; }
+  .date { color: var(--muted); font-size: 14px; margin-top: 4px; }
+  .sync { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted);
+          background: var(--surface); border: 1px solid var(--line); padding: 7px 11px; border-radius: 99px; margin-top: 6px; }
+  .sync i { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
+  .sync.ok i { background: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 20%, transparent); }
+  .sync.off i { background: var(--orange); }
 
-  .seg { display: flex; background: var(--card); border-radius: 14px; padding: 4px; gap: 4px; margin-top: 16px; }
-  .seg button { flex: 1; padding: 10px; border-radius: 11px; font-weight: 700; font-size: 15px; color: var(--muted); }
-  .seg button.on { background: var(--accent); color: #fff; }
-  .seg.small button { padding: 7px; font-size: 14px; }
+  /* ---------- الملخص ---------- */
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 20px; }
+  .stat { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 14px 12px; }
+  .stat b { display: block; font-size: 26px; font-weight: 800; line-height: 1.1; }
+  .stat span { font-size: 12px; color: var(--muted); }
+  .next { display: flex; align-items: center; gap: 12px; margin-top: 10px; padding: 14px 16px;
+          background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 22%, var(--surface)), var(--surface));
+          border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent); border-radius: 20px; }
+  .next .ic { width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center; flex: none;
+              background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent); }
+  .next small { display: block; font-size: 12px; color: var(--muted); }
+  .next b { display: block; font-size: 15px; margin-top: 1px; overflow-wrap: anywhere; }
+  .next em { font-style: normal; font-size: 13px; color: var(--accent); font-weight: 700; white-space: nowrap; margin-inline-start: auto; }
 
-  .card { background: var(--card); border-radius: 18px; padding: 14px 16px; margin-top: 12px; }
-  .progress-head { display: flex; justify-content: space-between; font-size: 14px; }
-  .progress-head b { font-size: 15px; }
-  .progress-head span { color: var(--muted); }
-  .bar { height: 8px; background: var(--field); border-radius: 4px; margin-top: 10px; overflow: hidden; }
-  .bar i { display: block; height: 100%; background: var(--green); border-radius: 4px; transition: width .3s; }
+  /* ---------- الأقسام ---------- */
+  .section-head { display: flex; align-items: center; justify-content: space-between; margin: 26px 2px 4px; }
+  .section-head h2 { font-size: 21px; margin: 0; font-weight: 800; }
+  .seg { display: flex; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 3px; }
+  .seg button { padding: 6px 14px; border-radius: 9px; font-size: 13px; font-weight: 700; color: var(--muted); }
+  .seg button.on { background: var(--surface-2); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
 
-  .text-in { width: 100%; background: var(--field); border: 0; border-radius: 12px; padding: 13px 14px; outline: none; }
-  .text-in:focus { box-shadow: 0 0 0 1px var(--accent); }
-  .row { display: flex; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
-  .label { color: var(--muted); font-size: 14px; width: 40px; }
-  .pill { padding: 8px 14px; border-radius: 99px; background: var(--field); color: var(--muted); font-size: 14px; }
-  .pill.on { background: var(--accent); color: #fff; }
-  .time-in, .date-in { background: var(--field); border: 0; border-radius: 10px; padding: 8px 10px; outline: none; color: var(--text); }
-  .time-in:disabled { opacity: .4; }
-  .check { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 14px; width: 40px; }
-  .check input { width: 18px; height: 18px; accent-color: var(--accent); margin: 0; }
-  .actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px; }
-  .btn { background: var(--accent); color: #fff; font-weight: 700; padding: 11px 22px; border-radius: 12px; font-size: 15px; }
-  .btn.ghost { background: var(--field); color: var(--text); font-weight: 400; }
-  .btn.urgent { background: var(--urgent); color: #1a0c03; }
-  .switch { display: flex; align-items: center; gap: 8px; font-size: 14px; }
-  .switch input { width: 18px; height: 18px; accent-color: var(--accent); margin: 0; }
-  .flash { font-size: 13px; font-weight: 700; margin-top: 10px; min-height: 1em; }
+  .progress { height: 6px; background: var(--surface-2); border-radius: 99px; overflow: hidden; margin: 12px 2px 0; }
+  .progress i { display: block; height: 100%; background: var(--green); border-radius: 99px; transition: width .4s ease; }
+  .progress-label { font-size: 12px; color: var(--muted); margin: 6px 2px 0; }
 
-  .group { display: flex; align-items: center; gap: 8px; margin: 20px 6px 4px; font-weight: 700; font-size: 15px; }
-  .group span { color: var(--muted); font-weight: 400; font-size: 13px; }
-  .group button { margin-inline-start: auto; color: var(--muted); font-size: 13px; padding: 4px 10px; border-radius: 99px; }
-  .item { display: flex; align-items: center; gap: 12px; background: var(--card); border-radius: 16px; padding: 13px 14px; margin-top: 8px; }
-  .tick { width: 30px; height: 30px; flex: none; border-radius: 50%; border: 2px solid var(--muted); color: #06130d; font-weight: 800; display: grid; place-items: center; }
-  .tick.on { background: var(--green); border-color: var(--green); }
+  .group { display: flex; align-items: center; gap: 8px; margin: 22px 4px 2px; font-size: 13px; font-weight: 700; }
+  .group span { color: var(--faint); font-weight: 600; }
+  .group button { margin-inline-start: auto; color: var(--muted); font-size: 12px; font-weight: 600; padding: 4px 10px;
+                  border-radius: 99px; background: var(--surface); border: 1px solid var(--line); }
+
+  .item { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--line);
+          border-radius: 18px; padding: 13px 14px; margin-top: 8px; animation: rise .25s ease; }
+  @keyframes rise { from { opacity: 0; transform: translateY(4px); } }
+  .tick { width: 28px; height: 28px; flex: none; border-radius: 50%; border: 2px solid var(--faint);
+          display: grid; place-items: center; color: var(--on-accent); transition: all .2s; }
+  .tick.on { background: var(--green); border-color: var(--green); color: #fff; }
+  .tick.urgent { border-color: var(--orange); }
   .body { flex: 1; min-width: 0; }
-  .title { font-weight: 700; font-size: 16px; overflow-wrap: anywhere; }
-  .title.done { color: var(--muted); text-decoration: line-through; }
-  .meta { font-size: 13px; color: var(--muted); margin-top: 2px; }
-  .side { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-  .side button { width: 32px; height: 30px; border-radius: 50%; color: var(--muted); font-size: 15px; }
-  .empty { text-align: center; color: var(--muted); padding: 50px 0; line-height: 1.8; }
+  .title { font-weight: 650; font-size: 15.5px; overflow-wrap: anywhere; line-height: 1.4; }
+  .title.done { color: var(--faint); text-decoration: line-through; }
+  .meta { font-size: 12.5px; color: var(--muted); margin-top: 3px; }
+  .tools { display: flex; align-items: center; gap: 2px; }
+  .tools button { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; color: var(--faint); }
+  .tools button:active { background: var(--surface-2); }
+  .tools .flag.on { color: var(--orange); }
 
-  .notify { display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid var(--field-hover); }
-  .notify p { margin: 0; font-size: 13px; color: var(--muted); }
-  .notify b { display: block; font-size: 15px; color: var(--text); margin-bottom: 2px; }
+  .empty { text-align: center; color: var(--muted); padding: 46px 20px; line-height: 1.9; font-size: 15px; }
+  .empty div { font-size: 34px; }
 
-  #login { max-width: 400px; margin: 12vh auto 0; }
-  #login h2 { font-size: 26px; margin: 0; }
-  #login p { color: var(--muted); font-size: 14px; margin: 6px 0 18px; }
-  #login .text-in { margin-top: 10px; direction: ltr; text-align: right; }
-  #login .btn { width: 100%; margin-top: 14px; padding: 13px; }
+  .banner { display: flex; align-items: center; gap: 12px; margin-top: 14px; padding: 14px 16px; border-radius: 20px;
+            background: var(--surface); border: 1px dashed color-mix(in srgb, var(--accent) 45%, transparent); }
+  .banner b { display: block; font-size: 14.5px; }
+  .banner p { margin: 2px 0 0; font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+  .btn { background: var(--accent); color: var(--on-accent); font-weight: 750; padding: 11px 20px; border-radius: 14px;
+         font-size: 15px; white-space: nowrap; }
+  .btn:active { transform: scale(.98); }
+  .btn.soft { background: var(--surface-2); color: var(--text); font-weight: 600; }
+  .btn.danger { background: color-mix(in srgb, var(--red) 14%, transparent); color: var(--red); }
+  .btn.wide { width: 100%; padding: 14px; }
+
+  /* ---------- الشريط السفلي ---------- */
+  .tabbar { position: fixed; inset: auto 0 0 0; z-index: 20; display: flex; justify-content: center;
+            padding: 8px 12px calc(env(safe-area-inset-bottom) + 8px);
+            background: var(--bar); backdrop-filter: blur(20px) saturate(1.6); -webkit-backdrop-filter: blur(20px) saturate(1.6);
+            border-top: 1px solid var(--line); }
+  .tabbar-inner { display: flex; width: 100%; max-width: 560px; align-items: center; }
+  .tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; font-weight: 600;
+         color: var(--faint); padding: 4px 0; }
+  .tab.on { color: var(--accent); }
+  .fab { width: 54px; height: 54px; border-radius: 18px; background: var(--accent); color: var(--on-accent);
+         display: grid; place-items: center; margin: -26px 8px 0; box-shadow: 0 8px 24px color-mix(in srgb, var(--accent) 45%, transparent); }
+  .fab:active { transform: scale(.95); }
+
+  /* ---------- ورقة الإضافة ---------- */
+  .backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, .45); z-index: 30; opacity: 0; pointer-events: none; transition: opacity .25s; }
+  .backdrop.open { opacity: 1; pointer-events: auto; }
+  .sheet { position: fixed; inset: auto 0 0 0; z-index: 31; margin: 0 auto; max-width: 560px;
+           background: var(--surface); border-radius: 26px 26px 0 0; border: 1px solid var(--line); border-bottom: 0;
+           padding: 10px 18px calc(env(safe-area-inset-bottom) + 18px); transform: translateY(105%);
+           transition: transform .3s cubic-bezier(.2, .9, .3, 1); box-shadow: var(--shadow); }
+  .sheet.open { transform: none; }
+  .grab { width: 38px; height: 5px; border-radius: 99px; background: var(--surface-2); margin: 0 auto 14px; }
+  .sheet h3 { margin: 0 0 12px; font-size: 19px; }
+  .field { width: 100%; background: var(--surface-2); border: 1px solid transparent; border-radius: 14px; padding: 14px; outline: none; }
+  .field:focus { border-color: color-mix(in srgb, var(--accent) 60%, transparent); }
+  .row { display: flex; align-items: center; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .row > .lbl { color: var(--muted); font-size: 14px; min-width: 42px; }
+  .chip { padding: 9px 15px; border-radius: 99px; background: var(--surface-2); color: var(--muted); font-size: 14px; font-weight: 600;
+          border: 1px solid transparent; }
+  .chip.on { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent);
+             border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
+  .chip.hot.on { background: color-mix(in srgb, var(--orange) 18%, transparent); color: var(--orange);
+                 border-color: color-mix(in srgb, var(--orange) 35%, transparent); }
+  .pick { background: var(--surface-2); border: 0; border-radius: 12px; padding: 9px 12px; outline: none; color: var(--text); min-height: 40px; }
+  .pick:disabled { opacity: .35; }
+  .sheet-actions { display: flex; gap: 10px; margin-top: 18px; }
+  .sheet-actions .btn { flex: 1; padding: 14px; }
+  .flash { font-size: 13px; font-weight: 700; margin-top: 10px; min-height: 1.2em; }
+
+  /* مفتاح تشغيل */
+  .switch { position: relative; width: 50px; height: 30px; flex: none; }
+  .switch input { opacity: 0; position: absolute; inset: 0; margin: 0; cursor: pointer; z-index: 1; }
+  .switch i { position: absolute; inset: 0; border-radius: 99px; background: var(--surface-2); transition: background .2s;
+              border: 1px solid var(--line); }
+  .switch i::after { content: ""; position: absolute; top: 3px; right: 3px; width: 22px; height: 22px; border-radius: 50%;
+                     background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.25); transition: transform .2s; }
+  .switch input:checked + i { background: var(--green); }
+  .switch input:checked + i::after { transform: translateX(-20px); }
+
+  /* ---------- الإعدادات ---------- */
+  .set-title { font-size: 13px; color: var(--muted); font-weight: 700; margin: 24px 6px 8px; }
+  .list { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; overflow: hidden; }
+  .li { display: flex; align-items: center; gap: 12px; padding: 13px 16px; min-height: 56px; width: 100%; text-align: right; }
+  .li + .li { border-top: 1px solid var(--line); }
+  .li .ic { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; flex: none; color: #fff; }
+  .li .tx { flex: 1; min-width: 0; }
+  .li .tx b { display: block; font-size: 15px; font-weight: 600; }
+  .li .tx small { display: block; font-size: 12.5px; color: var(--muted); margin-top: 2px; line-height: 1.5; }
+  .li .end { color: var(--muted); font-size: 14px; }
+  .li.red b { color: var(--red); }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .colors { display: flex; gap: 10px; }
+  .color { width: 30px; height: 30px; border-radius: 50%; border: 3px solid transparent; outline: 2px solid transparent; }
+  .color.on { border-color: var(--surface); outline-color: var(--text); }
+  .note { font-size: 12px; color: var(--faint); margin: 8px 8px 0; line-height: 1.6; }
+
+  /* ---------- الدخول ---------- */
+  #login { max-width: 400px; margin: 0 auto; padding: calc(env(safe-area-inset-top) + 14vh) 22px 40px; }
+  #login .logo { width: 72px; height: 72px; border-radius: 20px; box-shadow: var(--shadow); }
+  #login h1 { font-size: 30px; margin: 18px 0 0; }
+  #login p { color: var(--muted); font-size: 14.5px; margin: 6px 0 22px; line-height: 1.6; }
+  #login .field { margin-top: 10px; direction: ltr; text-align: right; }
   .pw-wrap { position: relative; }
-  .pw-wrap .text-in { padding-left: 48px; }
-  #pw-eye { position: absolute; left: 6px; bottom: 6px; width: 38px; height: 36px; border-radius: 10px; opacity: .7; }
-  .msg { font-size: 13px; font-weight: 700; margin-top: 10px; min-height: 1em; }
-  .foot { text-align: center; margin-top: 30px; }
-  .foot button { color: var(--muted); font-size: 13px; }
+  .pw-wrap .field { padding-left: 50px; }
+  #pw-eye { position: absolute; left: 6px; bottom: 7px; width: 40px; height: 36px; border-radius: 10px; color: var(--muted);
+            display: grid; place-items: center; }
+  #login .btn { margin-top: 16px; }
+  .msg { font-size: 13px; font-weight: 700; margin-top: 12px; min-height: 1.2em; }
+  .link { color: var(--muted); font-size: 13.5px; display: block; margin: 18px auto 0; }
+
+  /* نافذة تأكيد */
+  .dialog { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 24px; background: rgba(0,0,0,.45); }
+  .dialog-box { width: 100%; max-width: 340px; background: var(--surface); border-radius: 22px; padding: 22px; box-shadow: var(--shadow);
+                border: 1px solid var(--line); animation: pop .18s ease; }
+  @keyframes pop { from { transform: scale(.96); opacity: 0; } }
+  .dialog-box h4 { margin: 0; font-size: 18px; }
+  .dialog-box p { margin: 6px 0 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
+  .dialog-box .field { margin-top: 14px; }
+  .dialog-box .sheet-actions { margin-top: 18px; }
+
+  .toast { position: fixed; left: 50%; top: calc(env(safe-area-inset-top) + 12px); transform: translate(-50%, -150%); z-index: 50;
+           background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: 99px; font-size: 14px; font-weight: 700;
+           transition: transform .3s cubic-bezier(.2, .9, .3, 1); white-space: nowrap; }
+  .toast.show { transform: translate(-50%, 0); }
 </style>
 </head>
 <body>
 
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-tasks" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4 6l.8.8L6.5 5M4 12l.8.8 1.7-1.8M4 18l.8.8 1.7-1.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 1112 0v5l1.5 2h-15L6 16zM10 20.5a2 2 0 004 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2.8l1.6 2.4 2.8-.6.9 2.7 2.7.9-.6 2.8 2.4 1.6-2.4 1.6.6 2.8-2.7.9-.9 2.7-2.8-.6L12 21.2l-1.6-2.4-2.8.6-.9-2.7-2.7-.9.6-2.8L2.2 12l2.4-1.6-.6-2.8 2.7-.9.9-2.7 2.8.6L12 2.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 002 2h6a2 2 0 002-2l1-12M9 7V4h6v3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4m0 0h11l-2 4 2 4H5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7.5V12l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+  <symbol id="i-repeat" viewBox="0 0 24 24"><path d="M17 2l3 3-3 3M4 11V9a4 4 0 014-4h12M7 22l-3-3 3-3M20 13v2a4 4 0 01-4 4H4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+
+<!-- ---------- الدخول ---------- -->
 <section id="login" class="hidden">
-  <h2>☁️ تذكيراتي</h2>
+  <img class="logo" src="icon-192.png" alt="">
+  <h1>تذكيراتي</h1>
   <p>سجّل دخول بنفس الإيميل وكلمة المرور اللي في برنامج الكمبيوتر</p>
-  <input id="email" class="text-in" type="email" autocomplete="username" placeholder="الإيميل" value="abwoowd2@gmail.com">
+  <input id="email" class="field" type="email" autocomplete="username" placeholder="الإيميل" value="abwoowd2@gmail.com">
   <div class="pw-wrap">
-    <input id="password" class="text-in" type="password" autocomplete="current-password" placeholder="كلمة المرور"
+    <input id="password" class="field" type="password" autocomplete="current-password" placeholder="كلمة المرور"
            autocapitalize="none" autocorrect="off" spellcheck="false">
-    <button type="button" id="pw-eye" aria-label="إظهار كلمة المرور">👁</button>
+    <button type="button" id="pw-eye" aria-label="إظهار كلمة المرور"><svg width="20" height="20"><use href="#i-eye"/></svg></button>
   </div>
-  <button id="login-btn" class="btn">دخول</button>
+  <button id="login-btn" class="btn wide">دخول</button>
   <div id="login-msg" class="msg"></div>
-  <div class="foot"><button id="forgot">نسيت كلمة المرور؟</button></div>
+  <button id="forgot" class="link">نسيت كلمة المرور؟</button>
 </section>
 
-<main id="app" class="hidden">
-  <header>
-    <div>
-      <h1 id="hello"></h1>
-      <div class="date" id="today"></div>
+<!-- ---------- التطبيق ---------- -->
+<div id="app" class="hidden">
+  <div class="page">
+    <header>
+      <div>
+        <h1 class="hello" id="hello"></h1>
+        <div class="date" id="today"></div>
+      </div>
+      <div class="sync" id="sync"><i></i><span>…</span></div>
+    </header>
+
+    <!-- المهام والتذكيرات -->
+    <div id="home">
+      <div class="stats">
+        <div class="stat"><b id="st-urgent" style="color:var(--orange)">0</b><span>مستعجلة</span></div>
+        <div class="stat"><b id="st-tasks" style="color:var(--accent)">0</b><span>مهام باقية</span></div>
+        <div class="stat"><b id="st-today" style="color:var(--green)">0</b><span>تذكيرات اليوم</span></div>
+      </div>
+      <div class="next" id="next">
+        <div class="ic"><svg width="22" height="22"><use href="#i-clock"/></svg></div>
+        <div style="min-width:0"><small>التذكير الجاي</small><b id="next-title"></b></div>
+        <em id="next-when"></em>
+      </div>
+
+      <div class="banner hidden" id="notify">
+        <div style="flex:1"><b id="notify-title">🔔 فعّل التنبيهات</b><p id="notify-text">عشان توصلك التذكيرات حتى لو الكمبيوتر مطفي</p></div>
+        <button class="btn" id="notify-btn">فعّل</button>
+      </div>
+
+      <div class="section-head">
+        <h2 id="section-title"></h2>
+        <div class="seg hidden" id="view">
+          <button data-v="today" class="on">اليوم</button>
+          <button data-v="all">الكل</button>
+        </div>
+      </div>
+      <div class="progress"><i id="prog-bar" style="width:0"></i></div>
+      <div class="progress-label" id="prog-label"></div>
+      <div id="list"></div>
     </div>
-    <div class="status" id="status">…</div>
-  </header>
 
-  <div class="seg" id="section">
-    <button data-v="tasks" class="on">المهام</button>
-    <button data-v="reminders">التذكيرات</button>
-  </div>
+    <!-- الإعدادات -->
+    <div id="settings" class="hidden">
+      <div class="section-head"><h2>الإعدادات</h2></div>
 
-  <div class="card">
-    <div class="progress-head"><b id="prog-title"></b><span id="prog-count"></span></div>
-    <div class="bar"><i id="prog-bar" style="width:0"></i></div>
-  </div>
+      <div class="set-title">التنبيهات</div>
+      <div class="list">
+        <div class="li">
+          <div class="ic" style="background:#ff6b81"><svg width="18" height="18"><use href="#i-bell"/></svg></div>
+          <div class="tx"><b>تنبيهات الجوال</b><small id="push-state">…</small></div>
+          <label class="switch"><input type="checkbox" id="set-push"><i></i></label>
+        </div>
+        <div class="li">
+          <div class="ic" style="background:#ffa56b"><svg width="18" height="18"><use href="#i-clock"/></svg></div>
+          <div class="tx"><b>تنبيه «لم تنفذ بعد»</b><small>للتذكير اللي له وقت نهاية: قبل النهاية بكم دقيقة؟</small>
+            <div class="chips" id="set-warn" style="margin-top:10px">
+              <button class="chip" data-m="30">30 د</button>
+              <button class="chip" data-m="15">15 د</button>
+              <button class="chip" data-m="5">5 د</button>
+            </div>
+          </div>
+        </div>
+        <div class="li">
+          <div class="ic" style="background:#e5485b">⛔</div>
+          <div class="tx"><b>تنبيه «انتهى الوقت»</b><small>لما يخلص وقت التذكير وما خلّصته</small></div>
+          <label class="switch"><input type="checkbox" id="set-end"><i></i></label>
+        </div>
+        <button class="li" id="test-push">
+          <div class="ic" style="background:#5fd4a0">🧪</div>
+          <div class="tx"><b>تجربة تنبيه</b><small>يرسل لك تنبيه الحين عشان تتأكد إنها شغالة</small></div>
+          <span class="end">‹</span>
+        </button>
+        <div class="li">
+          <div class="ic" style="background:#8b9dff">🔊</div>
+          <div class="tx"><b>صوت التنبيه</b><small>Apple ما تسمح لتطبيقات الويب تختار صوت، فيستخدم صوت الجوال الأساسي. تغيّره من إعدادات الآيفون ← الأصوات والحس اللمسي</small></div>
+        </div>
+      </div>
+      <div class="note">إعدادات التنبيهات تتزامن مع برنامج الكمبيوتر بعد.</div>
 
-  <div class="card notify hidden" id="notify">
-    <div><b>🔔 فعّل التنبيهات</b><p>عشان توصلك التذكيرات على الجوال حتى لو الكمبيوتر مطفي</p></div>
-    <button class="btn" id="notify-btn">فعّل</button>
-  </div>
+      <div class="set-title">المظهر</div>
+      <div class="list">
+        <div class="li">
+          <div class="tx"><b>الوضع</b></div>
+          <div class="seg" id="set-theme">
+            <button data-v="auto">تلقائي</button>
+            <button data-v="light">فاتح</button>
+            <button data-v="dark">داكن</button>
+          </div>
+        </div>
+        <div class="li">
+          <div class="tx"><b>اللون</b></div>
+          <div class="colors" id="set-accent"></div>
+        </div>
+      </div>
 
-  <form class="card" id="task-form" autocomplete="off">
-    <input class="text-in" id="task-title" placeholder="وش المهمة؟ (تنفذها في أي وقت)" enterkeyhint="done">
-    <div class="actions">
-      <button class="btn" type="submit">＋ إضافة</button>
-      <button class="btn ghost" type="button" id="urgent-btn">عادية</button>
+      <div class="set-title">الحساب</div>
+      <div class="list">
+        <div class="li"><div class="tx"><b id="acc-email"></b><small>مسجّل دخول</small></div></div>
+        <button class="li" id="change-pw"><div class="tx"><b>تغيير كلمة المرور</b></div><span class="end">‹</span></button>
+        <button class="li red" id="logout"><div class="tx"><b>تسجيل خروج</b></div></button>
+      </div>
+      <div class="note" style="text-align:center;margin-top:20px">تذكيراتي • نفس التذكيرات على الكمبيوتر والماك والجوال</div>
     </div>
-  </form>
+  </div>
 
-  <form class="card hidden" id="rem-form" autocomplete="off">
-    <input class="text-in" id="rem-title" placeholder="وش تبي تتذكر؟" enterkeyhint="done">
+  <nav class="tabbar">
+    <div class="tabbar-inner">
+      <button class="tab" data-tab="tasks"><svg width="24" height="24"><use href="#i-tasks"/></svg>المهام</button>
+      <button class="tab" data-tab="reminders"><svg width="24" height="24"><use href="#i-bell"/></svg>التذكيرات</button>
+      <button class="fab" id="fab" aria-label="إضافة"><svg width="26" height="26"><use href="#i-plus"/></svg></button>
+      <button class="tab" data-tab="settings"><svg width="24" height="24"><use href="#i-gear"/></svg>الإعدادات</button>
+    </div>
+  </nav>
+</div>
+
+<!-- ---------- ورقة الإضافة ---------- -->
+<div class="backdrop" id="backdrop"></div>
+<form class="sheet" id="sheet" autocomplete="off">
+  <div class="grab"></div>
+  <div class="seg" id="add-kind" style="margin-bottom:14px">
+    <button type="button" data-v="tasks" style="flex:1">مهمة</button>
+    <button type="button" data-v="reminders" style="flex:1">تذكير</button>
+  </div>
+  <input class="field" id="add-title" enterkeyhint="done">
+
+  <div id="task-opts" class="row">
+    <button type="button" class="chip hot" id="urgent-chip">🔥 مستعجلة</button>
+  </div>
+
+  <div id="rem-opts">
     <div class="row">
-      <span class="label">متى</span>
-      <button type="button" class="pill" data-day="0">اليوم</button>
-      <button type="button" class="pill" data-day="1">بكرا</button>
-      <input type="date" class="date-in" id="rem-date">
+      <span class="lbl">اليوم</span>
+      <button type="button" class="chip" data-day="0">اليوم</button>
+      <button type="button" class="chip" data-day="1">بكرا</button>
+      <input type="date" class="pick" id="rem-date">
     </div>
     <div class="row">
-      <span class="label">من</span>
-      <input type="time" class="time-in" id="rem-start">
+      <span class="lbl">من</span>
+      <input type="time" class="pick" id="rem-start">
+      <button type="button" class="chip" id="end-chip">+ وقت نهاية</button>
+      <input type="time" class="pick hidden" id="rem-end">
     </div>
     <div class="row">
-      <label class="check"><input type="checkbox" id="has-end">إلى</label>
-      <input type="time" class="time-in" id="rem-end" disabled>
+      <button type="button" class="chip" id="daily-chip"><svg width="14" height="14" style="display:inline;vertical-align:-2px"><use href="#i-repeat"/></svg> يتكرر كل يوم</button>
     </div>
-    <div class="actions">
-      <button class="btn" type="submit">＋ إضافة</button>
-      <label class="switch"><input type="checkbox" id="rem-daily">يتكرر كل يوم</label>
-    </div>
-    <div class="flash" id="flash"></div>
-  </form>
-
-  <div class="seg small hidden" id="view">
-    <button data-v="today" class="on">اليوم</button>
-    <button data-v="all">الكل</button>
   </div>
 
-  <div id="list"></div>
+  <div class="flash" id="flash"></div>
+  <div class="sheet-actions">
+    <button class="btn" type="submit">إضافة</button>
+    <button class="btn soft" type="button" id="sheet-cancel">إلغاء</button>
+  </div>
+</form>
 
-  <div class="foot"><button id="logout">تسجيل خروج</button></div>
-</main>
+<div class="toast" id="toast"></div>
 
 <script type="module">
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm";
@@ -186,7 +427,8 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 const SUPABASE_URL = "https://cdbegnazbfqzkpvyhvzf.supabase.co";
 const SUPABASE_KEY = "sb_publishable_d5FCnmtNNXrRDb6NRD4yow__DUo-ICt";
 const VAPID_PUBLIC = "BMcQVqzz-4t62ZohKTlhHY948AFpIn5qrk4HkrZC1WUG1DQlrvzibyx5LA6PDFiZ_bS-fSoPL0oXp-2MLK1oB7Q";
-const WARN_BEFORE = 30;
+const ACCENTS = ["#8b9dff", "#5bb8f5", "#4cc9a0", "#f5a25d", "#f28bb0", "#b18cff"];
+const DEFAULT_SETTINGS = { warn: [30, 15, 5], end_alert: true };
 
 const DAYS = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
 const MONTHS = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
@@ -204,6 +446,7 @@ let items = store.get("items", {});      // id -> item
 let queue = store.get("queue", {});      // id -> item أو null للمحذوف
 let since = store.get("since", null);
 let online = false;
+let userId = null;
 
 function persist() {
   store.set("items", items);
@@ -260,14 +503,21 @@ async function sync() {
     if (e?.status === 401) await checkSession();
   } finally {
     syncing = false;
-    paintStatus();
+    paintSync();
   }
 }
 
-function paintStatus() {
-  const s = $("status");
-  s.textContent = online ? "☁️ متزامن" : "☁️ بدون نت";
-  s.className = "status " + (online ? "ok" : "off");
+function paintSync() {
+  const s = $("sync");
+  s.className = "sync " + (online ? "ok" : "off");
+  s.querySelector("span").textContent = online ? "متزامن" : "بدون نت";
+}
+
+// ---------- الإعدادات المتزامنة (تنحفظ كعنصر عشان توصل للكمبيوتر والسيرفر) ----------
+const settingsId = () => `settings-${userId}`;
+const settings = () => ({ ...DEFAULT_SETTINGS, ...(items[settingsId()] || {}) });
+function saveSettings(patch) {
+  change({ ...settings(), ...patch, id: settingsId(), kind: "settings" });
 }
 
 // ---------- وقت وتاريخ ----------
@@ -301,9 +551,30 @@ function dayLabel(s) {
   if (diff === -1) return "أمس";
   return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
 }
+function until(dt) {
+  const mins = Math.floor((dt - new Date()) / 60000) + 1;
+  if (mins < 60) return `بعد ${mins} د`;
+  const h = Math.floor(mins / 60), m = mins % 60;
+  if (h < 24) return `بعد ${h} س` + (m ? ` و ${m} د` : "");
+  return dayLabel(ymd(dt));
+}
+
+// ---------- المظهر ----------
+const prefs = Object.assign({ theme: "auto", accent: ACCENTS[0] }, store.get("prefs", {}));
+const darkMq = matchMedia("(prefers-color-scheme: dark)");
+function applyLook() {
+  const theme = prefs.theme === "auto" ? (darkMq.matches ? "dark" : "light") : prefs.theme;
+  document.documentElement.dataset.theme = theme;
+  document.documentElement.style.setProperty("--accent", prefs.accent);
+  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => {
+    m.content = theme === "dark" ? "#0d0e13" : "#f3f4f8";
+  });
+}
+darkMq.addEventListener("change", applyLook);
+applyLook();
 
 // ---------- الواجهة ----------
-let section = "tasks", view = "today", urgent = false, dayOffset = 0;
+let tab = "tasks", view = "today";
 
 function el(tag, cls, text) {
   const e = document.createElement(tag);
@@ -311,11 +582,59 @@ function el(tag, cls, text) {
   if (text != null) e.textContent = text;
   return e;
 }
+function icon(name, size = 18) {
+  const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  s.setAttribute("width", size);
+  s.setAttribute("height", size);
+  const u = document.createElementNS("http://www.w3.org/2000/svg", "use");
+  u.setAttribute("href", `#i-${name}`);
+  s.append(u);
+  return s;
+}
 
-function card(it, done, meta, metaColor, onTick, extra) {
+let toastTimer;
+function toast(text) {
+  const t = $("toast");
+  t.textContent = text;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+function confirmBox(title, text, okText, danger = true, withInput = false) {
+  return new Promise((resolve) => {
+    const d = el("div", "dialog");
+    const box = el("div", "dialog-box");
+    box.append(el("h4", "", title), el("p", "", text));
+    let input;
+    if (withInput) {
+      input = el("input", "field");
+      input.type = "text";
+      input.autocapitalize = "none";
+      input.placeholder = "كلمة المرور الجديدة";
+      box.append(input);
+    }
+    const acts = el("div", "sheet-actions");
+    const ok = el("button", "btn" + (danger ? " danger" : ""), okText);
+    const no = el("button", "btn soft", "إلغاء");
+    acts.append(ok, no);
+    box.append(acts);
+    d.append(box);
+    document.body.append(d);
+    if (input) setTimeout(() => input.focus(), 50);
+    const close = (v) => { d.remove(); resolve(v); };
+    ok.onclick = () => close(withInput ? input.value : true);
+    no.onclick = () => close(withInput ? null : false);
+    d.onclick = (e) => { if (e.target === d) close(withInput ? null : false); };
+  });
+}
+
+function card(it, done, meta, metaColor, onTick, flag, urgentRing) {
   const row = el("div", "item");
-  const tick = el("button", "tick" + (done ? " on" : ""), done ? "✓" : "");
-  tick.onclick = onTick;
+  const tick = el("button", "tick" + (done ? " on" : urgentRing ? " urgent" : ""));
+  tick.setAttribute("aria-label", "تم");
+  if (done) tick.append(icon("check", 15));
+  tick.onclick = () => { if (navigator.vibrate) navigator.vibrate(8); onTick(); };
   const body = el("div", "body");
   body.append(el("div", "title" + (done ? " done" : ""), it.title));
   if (meta) {
@@ -323,14 +642,22 @@ function card(it, done, meta, metaColor, onTick, extra) {
     if (metaColor) m.style.color = metaColor;
     body.append(m);
   }
-  const side = el("div", "side");
-  if (extra) side.append(extra);
-  const del = el("button", "", "✕");
-  del.onclick = () => remove(it.id);
-  side.append(del);
-  row.append(tick, body, side);
+  const tools = el("div", "tools");
+  if (flag) tools.append(flag);
+  const del = el("button", "");
+  del.setAttribute("aria-label", "حذف");
+  del.append(icon("trash", 17));
+  del.onclick = () => {
+    const backup = items[it.id];
+    remove(it.id);
+    toast("انحذف");
+    lastDeleted = backup;
+  };
+  tools.append(del);
+  row.append(tick, body, tools);
   return row;
 }
+let lastDeleted = null;
 
 function group(list, text, color, count, action) {
   const g = el("div", "group");
@@ -345,44 +672,64 @@ function group(list, text, color, count, action) {
   list.append(g);
 }
 
-function setProgress(title, done, total, emptyText) {
-  $("prog-title").textContent = title;
-  $("prog-count").textContent = total ? `${done} من ${total}` : emptyText;
+function setProgress(done, total, label) {
   $("prog-bar").style.width = total ? `${(done / total) * 100}%` : "0";
+  $("prog-label").textContent = label;
+}
+
+function empty(list, emoji, text) {
+  const e = el("div", "empty");
+  e.append(el("div", "", emoji), el("span", "", text));
+  list.append(e);
 }
 
 function render() {
   const now = new Date();
   const h = now.getHours();
   $("hello").textContent = (h >= 4 && h < 12 ? "صباح الخير" : h < 18 ? "مساء الخير" : "هلا والله") + " 👋";
-  $("today").textContent = `${DAYS[now.getDay()]}، ${now.getDate()} ${MONTHS[now.getMonth()]} ${now.getFullYear()}`;
+  $("today").textContent = `${DAYS[now.getDay()]}، ${now.getDate()} ${MONTHS[now.getMonth()]}`;
 
-  document.querySelectorAll("#section button").forEach((b) => b.classList.toggle("on", b.dataset.v === section));
+  document.querySelectorAll(".tab").forEach((b) => b.classList.toggle("on", b.dataset.tab === tab));
+  $("home").classList.toggle("hidden", tab === "settings");
+  $("settings").classList.toggle("hidden", tab !== "settings");
+  $("fab").classList.toggle("hidden", tab === "settings");
+  if (tab === "settings") return renderSettings();
+
+  const all = Object.values(items);
+  const tasks = all.filter((i) => kind(i) === "task");
+  const rems = all.filter((i) => kind(i) === "reminder");
+  const today = todayStr();
+
+  // الملخص
+  $("st-urgent").textContent = tasks.filter((i) => !i.done && i.urgent).length;
+  $("st-tasks").textContent = tasks.filter((i) => !i.done).length;
+  $("st-today").textContent = rems.filter((i) => !i.done && i.date === today).length;
+  const nxt = rems.filter((i) => !i.done && dueDt(i) > now).sort((a, b) => dueDt(a) - dueDt(b))[0];
+  $("next-title").textContent = nxt ? nxt.title : "ما فيه تذكيرات جاية";
+  $("next-when").textContent = nxt ? `${fmt12(nxt.time)} • ${until(dueDt(nxt))}` : "";
+
+  $("section-title").textContent = tab === "tasks" ? "المهام" : "التذكيرات";
+  $("view").classList.toggle("hidden", tab !== "reminders");
   document.querySelectorAll("#view button").forEach((b) => b.classList.toggle("on", b.dataset.v === view));
-  $("task-form").classList.toggle("hidden", section !== "tasks");
-  $("rem-form").classList.toggle("hidden", section !== "reminders");
-  $("view").classList.toggle("hidden", section !== "reminders");
 
   const list = $("list");
   list.replaceChildren();
-  const all = Object.values(items);
-  if (section === "tasks") renderTasks(list, all.filter((i) => kind(i) === "task"));
-  else renderReminders(list, all.filter((i) => kind(i) === "reminder"), now);
+  if (tab === "tasks") renderTasks(list, tasks);
+  else renderReminders(list, rems, now);
 }
 
 function renderTasks(list, tasks) {
   const urg = tasks.filter((i) => !i.done && i.urgent);
   const normal = tasks.filter((i) => !i.done && !i.urgent);
   const done = tasks.filter((i) => i.done);
-  setProgress("تقدم المهام", done.length, tasks.length, "ما عندك مهام");
-  if (!tasks.length) {
-    list.append(Object.assign(el("div", "empty"), { innerText: "ما فيه مهام 🎉\nأضف مهمة من فوق" }));
-    return;
-  }
+  setProgress(done.length, tasks.length, tasks.length ? `خلّصت ${done.length} من ${tasks.length}` : "");
+  if (!tasks.length) return empty(list, "🎉", "ما فيه مهام. اضغط ＋ تحت عشان تضيف");
   const groups = [
-    ["🔥 مستعجلة", "var(--urgent)", urg],
+    ["🔥 مستعجلة", "var(--orange)", urg],
     ["عادية", "var(--accent)", normal],
-    ["✓ منجزة", "var(--green)", done, ["مسح الكل", () => done.forEach((i) => remove(i.id))]],
+    ["منجزة", "var(--green)", done, ["مسح الكل", async () => {
+      if (await confirmBox("مسح المنجزة؟", `بينمسح ${done.length} من المهام المنجزة`, "مسح")) done.forEach((i) => remove(i.id));
+    }]],
   ];
   for (const [title, color, g, action] of groups) {
     if (!g.length) continue;
@@ -390,11 +737,12 @@ function renderTasks(list, tasks) {
     for (const it of g) {
       let flag = null;
       if (!it.done) {
-        flag = el("button", "", it.urgent ? "🔥" : "⚑");
-        if (it.urgent) flag.style.color = "var(--urgent)";
+        flag = el("button", "flag" + (it.urgent ? " on" : ""));
+        flag.setAttribute("aria-label", "مستعجلة");
+        flag.append(icon("flag", 17));
         flag.onclick = () => change({ ...it, urgent: !it.urgent });
       }
-      list.append(card(it, it.done, "", null, () => change({ ...it, done: !it.done }), flag));
+      list.append(card(it, it.done, "", null, () => change({ ...it, done: !it.done }), flag, it.urgent));
     }
   }
 }
@@ -404,17 +752,19 @@ function reminderCard(it, now) {
   const rolled = it.done_at === today && it.date !== today;
   const done = it.done || rolled;
   const end = endDt(it);
-  let meta = end ? `من ${fmt12(it.time)} إلى ${fmt12(it.end)}` : fmt12(it.time);
-  if (it.daily) meta += "  •  🔁 يومي";
+  let meta = end ? `${fmt12(it.time)} ← ${fmt12(it.end)}` : fmt12(it.time);
+  if (view === "all" && !["اليوم"].includes(dayLabel(it.date))) meta = `${dayLabel(it.date)} • ${meta}`;
+  if (it.daily) meta += " • 🔁 يومي";
   let color = null;
+  const warn = Math.max(...(settings().warn.length ? settings().warn : [30]));
   if (!done && end) {
-    if (now >= end) { meta += "  •  انتهى ولم تنفذ"; color = "var(--red)"; }
+    if (now >= end) { meta += " • انتهى ولم تنفذ"; color = "var(--red)"; }
     else if (now >= dueDt(it)) {
       const left = end - now;
-      meta += `  •  باقي ${durText(left)}`;
-      color = left <= WARN_BEFORE * 60000 ? "var(--urgent)" : "var(--accent)";
+      meta += ` • باقي ${durText(left)}`;
+      color = left <= warn * 60000 ? "var(--orange)" : "var(--accent)";
     }
-  } else if (!done && dueDt(it) < now) { meta += "  •  فات وقته"; color = "var(--red)"; }
+  } else if (!done && dueDt(it) < now) { meta += " • فات وقته"; color = "var(--red)"; }
   return card(it, done, meta, color, () => toggleReminder(it));
 }
 
@@ -422,28 +772,24 @@ function renderReminders(list, rems, now) {
   const today = todayStr();
   const todayRows = rems.filter((i) => i.date === today || i.done_at === today);
   const nDone = todayRows.filter((i) => i.done || (i.done_at === today && i.date !== today)).length;
-  setProgress("تذكيرات اليوم", nDone, todayRows.length, "ما عندك شي");
+  setProgress(nDone, todayRows.length, todayRows.length ? `خلّصت ${nDone} من ${todayRows.length} اليوم` : "");
 
   const rows = view === "today" ? todayRows : rems;
-  const order = (a, b) => (a.date + (a.done ? 1 : 0) + a.time).localeCompare(b.date + (b.done ? 1 : 0) + b.time);
   if (view === "today") {
     for (const it of rows.sort((a, b) => (a.done - b.done) || (dueDt(a) - dueDt(b)))) list.append(reminderCard(it, now));
   } else {
     const byDay = {};
+    const order = (a, b) => a.date.localeCompare(b.date) || (a.done - b.done) || (dueDt(a) - dueDt(b));
     for (const it of rows.sort(order)) (byDay[it.date] ||= []).push(it);
     for (const [date, g] of Object.entries(byDay)) {
       const d = new Date(`${date}T00:00`);
       let label = dayLabel(date);
-      label = ["اليوم", "بكرا", "أمس"].includes(label) ? `${label}  •  ${DAYS[d.getDay()]}` : `${DAYS[d.getDay()]} ${label}`;
-      group(list, label, date >= today ? "var(--accent)" : "var(--muted)", g.length);
+      label = ["اليوم", "بكرا", "أمس"].includes(label) ? `${label} • ${DAYS[d.getDay()]}` : `${DAYS[d.getDay()]} ${label}`;
+      group(list, label, date >= today ? "var(--accent)" : "var(--faint)", g.length);
       for (const it of g) list.append(reminderCard(it, now));
     }
   }
-  if (!rows.length) {
-    list.append(Object.assign(el("div", "empty"), {
-      innerText: view === "today" ? "يومك فاضي 🎉\nأضف تذكير من فوق" : "ما فيه تذكيرات بعد",
-    }));
-  }
+  if (!rows.length) empty(list, view === "today" ? "☀️" : "🗓️", view === "today" ? "يومك فاضي. اضغط ＋ عشان تضيف تذكير" : "ما فيه تذكيرات بعد");
 }
 
 function toggleReminder(it) {
@@ -466,99 +812,107 @@ function finish(it) {
   change(next);
 }
 
-// ---------- النماذج ----------
-$("section").onclick = (e) => { if (e.target.dataset.v) { section = e.target.dataset.v; render(); } };
+document.querySelectorAll(".tab").forEach((b) => { b.onclick = () => { tab = b.dataset.tab; render(); scrollTo(0, 0); }; });
 $("view").onclick = (e) => { if (e.target.dataset.v) { view = e.target.dataset.v; render(); } };
 
-function paintUrgent() {
-  const b = $("urgent-btn");
-  b.textContent = urgent ? "🔥 مستعجلة" : "عادية";
-  b.className = "btn " + (urgent ? "urgent" : "ghost");
-}
-$("urgent-btn").onclick = () => { urgent = !urgent; paintUrgent(); };
+// ---------- ورقة الإضافة ----------
+let addKind = "tasks", urgent = false, hasEnd = false, daily = false;
 
-$("task-form").onsubmit = (e) => {
-  e.preventDefault();
-  const title = $("task-title").value.trim();
-  if (!title) return $("task-title").focus();
-  change({ id: crypto.randomUUID().replaceAll("-", ""), kind: "task", title, urgent, done: false });
-  $("task-title").value = "";
-};
-
-function paintDays() {
+function paintSheet() {
+  document.querySelectorAll("#add-kind button").forEach((b) => b.classList.toggle("on", b.dataset.v === addKind));
+  $("task-opts").classList.toggle("hidden", addKind !== "tasks");
+  $("rem-opts").classList.toggle("hidden", addKind !== "reminders");
+  $("add-title").placeholder = addKind === "tasks" ? "وش المهمة؟" : "وش تبي تتذكر؟";
+  $("urgent-chip").classList.toggle("on", urgent);
+  $("daily-chip").classList.toggle("on", daily);
+  $("end-chip").classList.toggle("on", hasEnd);
+  $("end-chip").textContent = hasEnd ? "إلى ✕" : "+ وقت نهاية";
+  $("rem-end").classList.toggle("hidden", !hasEnd);
   const chosen = $("rem-date").value;
   document.querySelectorAll("[data-day]").forEach((b) => {
     b.classList.toggle("on", ymd(addDays(new Date(), +b.dataset.day)) === chosen);
   });
 }
-document.querySelectorAll("[data-day]").forEach((b) => {
-  b.onclick = () => { $("rem-date").value = ymd(addDays(new Date(), +b.dataset.day)); paintDays(); };
-});
-$("rem-date").onchange = paintDays;
-$("has-end").onchange = () => { $("rem-end").disabled = !$("has-end").checked; };
 
-let flashTimer;
-function flash(text, color = "var(--green)") {
-  const f = $("flash");
-  f.textContent = text;
-  f.style.color = color;
-  clearTimeout(flashTimer);
-  flashTimer = setTimeout(() => (f.textContent = ""), 4000);
-}
-
-function resetReminderForm() {
+function openSheet() {
+  addKind = tab === "reminders" ? "reminders" : "tasks";
   const now = new Date();
   $("rem-date").value = todayStr();
   $("rem-date").min = todayStr();
   $("rem-start").value = hm(now);
   $("rem-end").value = hm(new Date(now.getTime() + 3600000));
-  paintDays();
+  urgent = false; hasEnd = false; daily = false;
+  $("add-title").value = "";
+  $("flash").textContent = "";
+  paintSheet();
+  $("sheet").classList.add("open");
+  $("backdrop").classList.add("open");
+  setTimeout(() => $("add-title").focus(), 280);
+}
+function closeSheet() {
+  $("sheet").classList.remove("open");
+  $("backdrop").classList.remove("open");
+  $("add-title").blur();
 }
 
-$("rem-form").onsubmit = (e) => {
+$("fab").onclick = openSheet;
+$("backdrop").onclick = closeSheet;
+$("sheet-cancel").onclick = closeSheet;
+$("add-kind").onclick = (e) => { if (e.target.dataset.v) { addKind = e.target.dataset.v; paintSheet(); $("add-title").focus(); } };
+$("urgent-chip").onclick = () => { urgent = !urgent; paintSheet(); };
+$("daily-chip").onclick = () => { daily = !daily; paintSheet(); };
+$("end-chip").onclick = () => { hasEnd = !hasEnd; paintSheet(); };
+$("rem-date").onchange = paintSheet;
+document.querySelectorAll("[data-day]").forEach((b) => {
+  b.onclick = () => { $("rem-date").value = ymd(addDays(new Date(), +b.dataset.day)); paintSheet(); };
+});
+
+function flash(text, color = "var(--red)") {
+  const f = $("flash");
+  f.textContent = text;
+  f.style.color = color;
+}
+
+$("sheet").onsubmit = (e) => {
   e.preventDefault();
-  const title = $("rem-title").value.trim();
-  const date = $("rem-date").value, start = $("rem-start").value;
-  const end = $("has-end").checked ? $("rem-end").value : null;
-  if (!title) { $("rem-title").focus(); return flash("اكتب التذكير أول", "var(--red)"); }
-  if (!date || !start || ($("has-end").checked && !end)) return flash("حدد اليوم والوقت", "var(--red)");
-  if (end === start) return flash("وقت النهاية نفس البداية", "var(--red)");
-  if (Object.values(items).some((i) => kind(i) === "reminder" && !i.done && i.title === title && i.date === date && i.time === start)) {
-    return flash("هذا التذكير موجود من قبل", "var(--urgent)");
+  const title = $("add-title").value.trim();
+  if (!title) { $("add-title").focus(); return flash(addKind === "tasks" ? "اكتب المهمة أول" : "اكتب التذكير أول"); }
+  const id = crypto.randomUUID().replaceAll("-", "");
+  if (addKind === "tasks") {
+    change({ id, kind: "task", title, urgent, done: false });
+    closeSheet();
+    tab = "tasks";
+    render();
+    return toast("✓ انضافت المهمة");
   }
-  change({
-    id: crypto.randomUUID().replaceAll("-", ""), kind: "reminder", title, date, time: start, end,
-    daily: $("rem-daily").checked, done: false, fired: false, sent: [],
-  });
-  $("rem-title").value = "";
-  flash(`✓ انضاف  •  ${dayLabel(date)} ${fmt12(start)}`);
-  if (view === "today" && date !== todayStr()) { view = "all"; render(); }
+  const date = $("rem-date").value, start = $("rem-start").value;
+  const end = hasEnd ? $("rem-end").value : null;
+  if (!date || !start || (hasEnd && !end)) return flash("حدد اليوم والوقت");
+  if (end === start) return flash("وقت النهاية نفس البداية");
+  if (Object.values(items).some((i) => kind(i) === "reminder" && !i.done && i.title === title && i.date === date && i.time === start)) {
+    return flash("هذا التذكير موجود من قبل", "var(--orange)");
+  }
+  change({ id, kind: "reminder", title, date, time: start, end, daily, done: false, fired: false, sent: [] });
+  closeSheet();
+  tab = "reminders";
+  if (date !== todayStr()) view = "all";
+  render();
+  toast(`✓ ${dayLabel(date)} ${fmt12(start)}`);
 };
 
 // ---------- التنبيهات ----------
 const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+const canPush = "serviceWorker" in navigator && "PushManager" in window;
 
 function b64ToBytes(s) {
   const raw = atob((s + "=".repeat((4 - (s.length % 4)) % 4)).replace(/-/g, "+").replace(/_/g, "/"));
   return Uint8Array.from(raw, (c) => c.charCodeAt(0));
 }
 
-async function paintNotify() {
-  const box = $("notify");
-  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-    // في سفاري العادي ما فيه تنبيهات: لازم يضيفه على الشاشة الرئيسية
-    if (!standalone && /iphone|ipad/i.test(navigator.userAgent)) {
-      box.querySelector("b").textContent = "📲 أضفه للشاشة الرئيسية";
-      box.querySelector("p").textContent = "اضغط زر المشاركة ⬆️ ثم «إضافة إلى الشاشة الرئيسية»، وافتحه من هناك عشان تشتغل التنبيهات";
-      $("notify-btn").classList.add("hidden");
-      box.classList.remove("hidden");
-    }
-    return;
-  }
+async function currentSub() {
+  if (!canPush) return null;
   const reg = await navigator.serviceWorker.ready;
-  const sub = await reg.pushManager.getSubscription();
-  box.classList.toggle("hidden", !!sub && Notification.permission === "granted");
-  if (sub) saveSub(sub); // نتأكد إنه محفوظ في السيرفر
+  return reg.pushManager.getSubscription();
 }
 
 async function saveSub(sub) {
@@ -566,23 +920,123 @@ async function saveSub(sub) {
   await sb.from("push_subs").upsert({ endpoint: json.endpoint, sub: json }, { onConflict: "endpoint" });
 }
 
+async function enablePush() {
+  const perm = await Notification.requestPermission();
+  if (perm !== "granted") { toast("لازم تسمح بالتنبيهات من الإعدادات"); return false; }
+  const reg = await navigator.serviceWorker.ready;
+  const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(VAPID_PUBLIC) });
+  await saveSub(sub);
+  return true;
+}
+
+async function disablePush() {
+  const sub = await currentSub();
+  if (!sub) return;
+  await sb.from("push_subs").delete().eq("endpoint", sub.endpoint);
+  await sub.unsubscribe();
+}
+
+async function paintNotify() {
+  const box = $("notify");
+  if (!canPush) {
+    if (!standalone && /iphone|ipad/i.test(navigator.userAgent)) {
+      $("notify-title").textContent = "📲 أضفه للشاشة الرئيسية";
+      $("notify-text").textContent = "اضغط زر المشاركة ⬆️ ثم «إضافة إلى الشاشة الرئيسية»، وافتحه من هناك عشان تشتغل التنبيهات";
+      $("notify-btn").classList.add("hidden");
+      box.classList.remove("hidden");
+    }
+    return;
+  }
+  const sub = await currentSub();
+  box.classList.toggle("hidden", !!sub && Notification.permission === "granted");
+  if (sub) saveSub(sub); // نتأكد إنه محفوظ في السيرفر
+}
+
 $("notify-btn").onclick = async () => {
   try {
-    const perm = await Notification.requestPermission();
-    if (perm !== "granted") return alert("لازم تسمح بالتنبيهات من الإعدادات");
-    const reg = await navigator.serviceWorker.ready;
-    const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(VAPID_PUBLIC) });
-    await saveSub(sub);
-    $("notify").classList.add("hidden");
-  } catch (e) {
-    alert("ما قدرت أفعّل التنبيهات: " + e.message);
+    if (await enablePush()) { $("notify").classList.add("hidden"); toast("✓ تفعّلت التنبيهات"); }
+  } catch (e) { toast("ما قدرت أفعّلها: " + e.message); }
+};
+
+// ---------- شاشة الإعدادات ----------
+async function renderSettings() {
+  const s = settings();
+  document.querySelectorAll("#set-warn .chip").forEach((c) => c.classList.toggle("on", s.warn.includes(+c.dataset.m)));
+  $("set-end").checked = s.end_alert;
+  document.querySelectorAll("#set-theme button").forEach((b) => b.classList.toggle("on", b.dataset.v === prefs.theme));
+  const colors = $("set-accent");
+  if (!colors.children.length) {
+    for (const c of ACCENTS) {
+      const b = el("button", "color");
+      b.style.background = c;
+      b.dataset.c = c;
+      b.onclick = () => { prefs.accent = c; store.set("prefs", prefs); applyLook(); renderSettings(); };
+      colors.append(b);
+    }
   }
+  colors.querySelectorAll(".color").forEach((b) => b.classList.toggle("on", b.dataset.c === prefs.accent));
+  const { data } = await sb.auth.getSession();
+  $("acc-email").textContent = data.session?.user?.email || "";
+
+  const sub = await currentSub();
+  const on = !!sub && Notification.permission === "granted";
+  $("set-push").checked = on;
+  $("set-push").disabled = !canPush;
+  $("push-state").textContent = !canPush
+    ? (standalone ? "الجوال ما يدعمها (يحتاج iOS 16.4 أو أحدث)" : "افتح التطبيق من الشاشة الرئيسية عشان تشتغل")
+    : on ? "مفعّلة على هذا الجوال" : "طافية";
+}
+
+$("set-warn").onclick = (e) => {
+  const m = +e.target.dataset.m;
+  if (!m) return;
+  const warn = settings().warn.includes(m) ? settings().warn.filter((x) => x !== m) : [...settings().warn, m].sort((a, b) => b - a);
+  saveSettings({ warn });
+};
+$("set-end").onchange = (e) => saveSettings({ end_alert: e.target.checked });
+$("set-theme").onclick = (e) => {
+  if (!e.target.dataset.v) return;
+  prefs.theme = e.target.dataset.v;
+  store.set("prefs", prefs);
+  applyLook();
+  renderSettings();
+};
+$("set-push").onchange = async (e) => {
+  try {
+    if (e.target.checked) { if (await enablePush()) toast("✓ تفعّلت التنبيهات"); }
+    else { await disablePush(); toast("طفّيت التنبيهات على هذا الجوال"); }
+  } catch (err) { toast("ما زبطت: " + err.message); }
+  renderSettings();
+  paintNotify();
+};
+$("test-push").onclick = async () => {
+  const sub = await currentSub();
+  if (!sub) return toast("فعّل التنبيهات أول");
+  const { error } = await sb.functions.invoke("push", { body: { test: true } });
+  toast(error ? "ما انرسل، جرب مرة ثانية" : "انرسل ✓ قفّل الجوال وشوف");
+};
+$("change-pw").onclick = async () => {
+  const pw = await confirmBox("كلمة مرور جديدة", "6 حروف أو أكثر، وبالأرقام الإنجليزية. استخدمها بعدها في الكمبيوتر والماك", "حفظ", false, true);
+  if (pw == null) return;
+  if (pw.trim().length < 6) return toast("قصيرة، خلها 6 أو أكثر");
+  const { error } = await sb.auth.updateUser({ password: pw.trim() });
+  toast(error ? "ما تغيّرت: " + error.message : "✓ تغيّرت كلمة المرور");
+};
+$("logout").onclick = async () => {
+  if (!(await confirmBox("تسجيل خروج؟", "بتحتاج تدخل الإيميل وكلمة المرور مرة ثانية، والتنبيهات بتوقف على هذا الجوال", "تسجيل خروج"))) return;
+  try { await disablePush(); } catch {}
+  await sb.auth.signOut();
+  items = {}; queue = {}; since = null;
+  persist();
+  tab = "tasks";
+  checkSession();
 };
 
 // ---------- الدخول ----------
 async function checkSession() {
   const { data } = await sb.auth.getSession();
   const signedIn = !!data.session;
+  userId = data.session?.user?.id || null;
   $("login").classList.toggle("hidden", signedIn);
   $("app").classList.toggle("hidden", !signedIn);
   return signedIn;
@@ -607,51 +1061,41 @@ $("login-btn").onclick = async () => {
   start();
 };
 $("password").onkeydown = (e) => { if (e.key === "Enter") $("login-btn").click(); };
+$("pw-eye").onclick = () => {
+  const p = $("password");
+  p.type = p.type === "password" ? "text" : "password";
+};
+
 $("forgot").onclick = async () => {
   const msg = $("login-msg");
   const email = $("email").value.trim().toLowerCase();
   if (!email) return;
   const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
   msg.style.color = error ? "var(--red)" : "var(--green)";
-  msg.textContent = error ? error.message : "✓ انرسل لك إيميل. افتح الرابط اللي فيه وحط كلمة مرور جديدة";
+  msg.textContent = error ? (/rate limit/i.test(error.message) ? "محاولات كثيرة، جرب بعد ساعة. أو غيّرها من برنامج الكمبيوتر" : error.message)
+                          : "✓ انرسل لك إيميل. افتح الرابط اللي فيه وحط كلمة مرور جديدة";
 };
 
 // جا من رابط "نسيت كلمة المرور"
 sb.auth.onAuthStateChange(async (event) => {
   if (event !== "PASSWORD_RECOVERY") return;
-  const pw = prompt("اكتب كلمة المرور الجديدة (6 حروف أو أكثر، وبالأرقام الإنجليزية)");
-  if (!pw) return;
-  const { error } = await sb.auth.updateUser({ password: pw });
-  alert(error ? "ما تغيّرت: " + error.message : "✓ تغيّرت كلمة المرور. استخدمها في الكمبيوتر بعد");
-  start();
+  await checkSession();
+  $("change-pw").click();
 });
 
-$("pw-eye").onclick = () => {
-  const p = $("password");
-  p.type = p.type === "password" ? "text" : "password";
-};
-
-$("logout").onclick = async () => {
-  await sb.auth.signOut();
-  items = {}; queue = {}; since = null;
-  persist();
-  checkSession();
-};
-
-let timer;
+let timer, ticker;
 async function start() {
   if (!(await checkSession())) return;
-  resetReminderForm();
-  paintUrgent();
   render();
   paintNotify();
   sync();
   clearInterval(timer);
+  clearInterval(ticker);
   timer = setInterval(() => { if (!document.hidden) sync(); }, 4000);
-  setInterval(render, 60000);
+  ticker = setInterval(() => { if (tab !== "settings") render(); }, 30000);
 }
 
-document.addEventListener("visibilitychange", () => { if (!document.hidden) { sync(); render(); } });
+document.addEventListener("visibilitychange", () => { if (!document.hidden && userId) { sync(); render(); } });
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
 start();
 </script>
