@@ -390,7 +390,12 @@ class App:
         threading.Thread(target=self.tray.run, daemon=True).start()
 
     # ---------- ويدجت المهام على سطح المكتب ----------
-    WIDGET_W = 300
+    WIDGET_W = 320
+    # شكل زجاجي: ألوان فاتحة شوي مع شفافية، وحافة فاتحة مثل لمعة القزاز
+    W_BG, W_ROW, W_ROW_HOVER, W_LINE = "#1b1e2a", "#262a39", "#2f3446", "#4a5068"
+    W_TEXT, W_MUTED, W_FAINT = "#f4f5fa", "#a3a8bb", "#7a8096"
+    W_ACCENT, W_GREEN, W_ORANGE = "#9aaaff", "#5fd4a0", "#ffa56b"
+    W_ALPHA = 0.82
 
     def widget_prefs(self):
         try:
@@ -423,74 +428,103 @@ class App:
         w = self.widget = tk.Toplevel(self.root)
         w.overrideredirect(True)  # بدون إطار وبدون أيقونة في شريط المهام
         w.attributes("-topmost", bool(p.get("top")))
-        w.attributes("-alpha", 0.97)
+        w.attributes("-alpha", self.W_ALPHA)
         make_transparent(w)
 
-        box = ctk.CTkFrame(w, corner_radius=20, fg_color=CARD, border_width=1,
-                           border_color=FIELD_HOVER, bg_color=KEY, width=self.WIDGET_W)
+        box = ctk.CTkFrame(w, corner_radius=22, fg_color=self.W_BG, border_width=1,
+                           border_color=self.W_LINE, bg_color=KEY, width=self.WIDGET_W)
         box.pack(fill="both", expand=True)
 
-        head = ctk.CTkFrame(box, fg_color="transparent", cursor="fleur")
-        head.pack(fill="x", padx=14, pady=(12, 4))
-        title = ctk.CTkLabel(head, text="📋  المهام", font=font(15, "bold"), text_color=TEXT)
-        title.pack(side="right")
-        self.widget_count = ctk.CTkLabel(head, text="", font=font(12), text_color=MUTED)
-        self.widget_count.pack(side="right", padx=8)
-        small = dict(width=28, height=28, corner_radius=14, fg_color="transparent", hover_color=FIELD,
-                     font=font(13))
-        ctk.CTkButton(head, text="✕", text_color=MUTED, command=self.toggle_widget, **small).pack(side="left")
-        self.pin_btn = ctk.CTkButton(head, text="📌", command=self.flip_widget_top, **small)
-        self.pin_btn.pack(side="left", padx=2)
-        ctk.CTkButton(head, text="↗", text_color=MUTED, command=self.show, **small).pack(side="left")
-        self.paint_pin()
-
-        # نسحبه من الرأس
-        for wd in (head, title, self.widget_count):
+        # الرأس: بس العنوان والتاريخ. ضغطة عليه تطلع الخيارات، والسحب يحرّك الويدجت
+        head = ctk.CTkFrame(box, fg_color="transparent", cursor="hand2")
+        head.pack(fill="x", padx=18, pady=(16, 0))
+        t1 = ctk.CTkLabel(head, text="مهامي", font=font(17, "bold"), text_color=self.W_TEXT, anchor="e", height=22)
+        t1.pack(fill="x")
+        self.widget_sub = ctk.CTkLabel(head, text="", font=font(11), text_color=self.W_MUTED, anchor="e", height=16)
+        self.widget_sub.pack(fill="x")
+        for wd in (head, t1, self.widget_sub):
             wd.bind("<ButtonPress-1>", self.widget_drag_start)
             wd.bind("<B1-Motion>", self.widget_drag)
             wd.bind("<ButtonRelease-1>", self.widget_drag_end)
+        # الكلك اليمين في أي مكان يطلع الخيارات بعد (نربطه مرة وحدة بس)
+        if not getattr(self, "_rc_bound", False):
+            self._rc_bound = True
+            self.root.bind_all("<Button-3>", self.widget_right_click, add="+")
+            if IS_MAC:
+                self.root.bind_all("<Button-2>", self.widget_right_click, add="+")
+
+        # شريط التقدم
+        self.widget_bar = ctk.CTkProgressBar(box, height=4, corner_radius=2, progress_color=self.W_GREEN,
+                                             fg_color=self.W_ROW)
+        self.widget_bar.pack(fill="x", padx=18, pady=(12, 4))
+        self.widget_prog = ctk.CTkLabel(box, text="", font=font(10), text_color=self.W_FAINT, anchor="e", height=14)
+        self.widget_prog.pack(fill="x", padx=18)
 
         self.widget_body = ctk.CTkFrame(box, fg_color="transparent")
-        self.widget_body.pack(fill="x", padx=12)
+        self.widget_body.pack(fill="x", padx=12, pady=(4, 0))
 
-        add = ctk.CTkEntry(box, height=36, corner_radius=12, fg_color=FIELD, border_width=0, justify="right",
-                           placeholder_text="＋  مهمة جديدة (Enter)", font=font(13), text_color=TEXT)
-        add.pack(fill="x", padx=12, pady=(6, 12))
+        # خانة الإضافة
+        add_row = ctk.CTkFrame(box, fg_color=self.W_ROW, corner_radius=14, height=40)
+        add_row.pack(fill="x", padx=12, pady=(10, 14))
+        add = ctk.CTkEntry(add_row, height=38, corner_radius=14, fg_color=self.W_ROW, border_width=0,
+                           justify="right", placeholder_text="مهمة جديدة…", placeholder_text_color=self.W_FAINT,
+                           font=font(13), text_color=self.W_TEXT)
+        ctk.CTkButton(add_row, text="＋", width=30, height=30, corner_radius=10, fg_color=self.W_ACCENT,
+                      hover_color="#7a8cf0", text_color="#0d0e13", font=font(15, "bold"),
+                      command=lambda: self.widget_add(add)).pack(side="left", padx=(5, 0), pady=4)
+        add.pack(side="right", fill="x", expand=True, padx=(0, 4))
         add.bind("<Button-1>", lambda e: (w.focus_force(), add.focus_set()))
         add.bind("<Return>", lambda e: self.widget_add(add))
         add.bind("<Escape>", lambda e: self.root.focus_set())
 
         self.render_widget()
         w.update_idletasks()
-        sw, sh = w.winfo_screenwidth(), w.winfo_screenheight()
+        sw = w.winfo_screenwidth()
         x = p.get("x", sw - self.WIDGET_W - 24)
         y = p.get("y", 80)
-        # لو تغيّرت الشاشة وصار برا، نرجّعه
-        x = min(max(0, x), sw - 120)
-        y = min(max(0, y), sh - 120)
+        # لو انشالت الشاشة اللي كان عليها، نرجّعه (نحسب كل الشاشات مو بس الأساسية)
+        if IS_MAC:
+            vx, vy, vw, vh = 0, 0, sw, w.winfo_screenheight()
+        else:
+            gm = ctypes.windll.user32.GetSystemMetrics
+            vx, vy, vw, vh = gm(76), gm(77), gm(78), gm(79)  # SM_X/Y/CX/CYVIRTUALSCREEN
+        x = min(max(vx, x), vx + vw - 120)
+        y = min(max(vy, y), vy + vh - 120)
         w.geometry(f"+{x}+{y}")
         self.save_widget_prefs(on=True)
 
-    def paint_pin(self):
+    def widget_menu(self, x, y):
         top = bool(self.widget_prefs().get("top"))
-        self.pin_btn.configure(text_color=ACCENT if top else MUTED,
-                               fg_color=FIELD if top else "transparent")
+        m = tk.Menu(self.root, tearoff=0)
+        m.add_command(label="فتح البرنامج", command=self.show)
+        m.add_command(label=("✓  " if top else "     ") + "فوق كل النوافذ", command=self.flip_widget_top)
+        m.add_separator()
+        m.add_command(label="إخفاء الويدجت", command=self.toggle_widget)
+        m.tk_popup(x, y)
+
+    def widget_right_click(self, e):
+        if self.widget is not None and str(e.widget).startswith(str(self.widget)):
+            self.widget_menu(e.x_root, e.y_root)
 
     def flip_widget_top(self):
         top = not self.widget_prefs().get("top")
         self.save_widget_prefs(top=top)
         self.widget.attributes("-topmost", top)
-        self.paint_pin()
 
     def widget_drag_start(self, e):
         self._drag = (e.x_root - self.widget.winfo_x(), e.y_root - self.widget.winfo_y())
+        self._drag_from = (e.x_root, e.y_root)
 
     def widget_drag(self, e):
         dx, dy = self._drag
         self.widget.geometry(f"+{e.x_root - dx}+{e.y_root - dy}")
 
     def widget_drag_end(self, e):
-        self.save_widget_prefs(x=self.widget.winfo_x(), y=self.widget.winfo_y())
+        fx, fy = self._drag_from
+        if abs(e.x_root - fx) < 4 and abs(e.y_root - fy) < 4:  # ضغطة بدون سحب: نطلع الخيارات
+            self.widget_menu(e.x_root, e.y_root)
+        else:
+            self.save_widget_prefs(x=self.widget.winfo_x(), y=self.widget.winfo_y())
 
     def widget_add(self, entry):
         text = entry.get().strip()
@@ -501,35 +535,64 @@ class App:
         entry.delete(0, "end")
         self.refresh()
 
-    def widget_done(self, it):
+    def widget_done(self, it, btn):
+        # علامة صح خضرا، وبعدها تختفي المهمة
+        btn.configure(text="✓", fg_color=self.W_GREEN, border_color=self.W_GREEN, state="disabled")
         it["done"] = True
         save(self.items)
-        self.refresh()
+        self.root.after(450, self.refresh)
+
+    def widget_row(self, it):
+        urgent = it.get("urgent")
+        row = ctk.CTkFrame(self.widget_body, fg_color=self.W_ROW, corner_radius=12)
+        row.pack(fill="x", pady=3)
+        if urgent:  # خط برتقالي على طرف المهمة المستعجلة
+            ctk.CTkFrame(row, width=3, corner_radius=2, fg_color=self.W_ORANGE).pack(side="right", fill="y",
+                                                                                     padx=(0, 4), pady=8)
+        btn = ctk.CTkButton(row, text="", width=20, height=20, corner_radius=10, fg_color="transparent",
+                            hover_color=self.W_GREEN, border_width=2, text_color="#0d0e13", font=font(11, "bold"),
+                            text_color_disabled="#0d0e13", border_color=self.W_ORANGE if urgent else self.W_FAINT)
+        btn.configure(command=lambda: self.widget_done(it, btn))
+        btn.pack(side="right", padx=(8 if urgent else 12, 8), pady=10)
+        lbl = ctk.CTkLabel(row, text=it["title"], font=font(13), text_color=self.W_TEXT, anchor="e",
+                           justify="right", wraplength=self.WIDGET_W - 90)
+        lbl.pack(side="right", fill="x", expand=True, padx=(10, 0), pady=6)
+        for wd in (row, lbl):
+            wd.bind("<Enter>", lambda e: row.configure(fg_color=self.W_ROW_HOVER))
+            wd.bind("<Leave>", lambda e: row.configure(fg_color=self.W_ROW))
 
     def render_widget(self):
         if self.widget is None:
             return
         for c in self.widget_body.winfo_children():
             c.destroy()
-        tasks = [i for i in self.items if kind(i) == "task" and not i["done"]]
+        all_tasks = [i for i in self.items if kind(i) == "task"]
+        tasks = [i for i in all_tasks if not i["done"]]
         tasks.sort(key=lambda i: not i.get("urgent"))
-        self.widget_count.configure(text=str(len(tasks)) if tasks else "")
+        done = len(all_tasks) - len(tasks)
+
+        now = datetime.now()
+        left = f"  •  باقي {len(tasks)}" if tasks else ""
+        self.widget_sub.configure(text=f"{DAYS[now.weekday()]} {now.day} {MONTHS[now.month - 1]}{left}")
+        self.widget_bar.set(done / len(all_tasks) if all_tasks else 0)
+        self.widget_prog.configure(text=f"خلّصت {done} من {len(all_tasks)}" if all_tasks else "")
+
         if not tasks:
-            ctk.CTkLabel(self.widget_body, text="ما فيه مهام 🎉", font=font(13), text_color=MUTED).pack(pady=14)
-        limit = 8
+            e = ctk.CTkFrame(self.widget_body, fg_color="transparent")
+            e.pack(fill="x", pady=16)
+            ctk.CTkLabel(e, text="✓", font=font(26, "bold"), text_color=self.W_GREEN, height=30).pack()
+            ctk.CTkLabel(e, text="خلّصت كل مهامك", font=font(13, "bold"), text_color=self.W_TEXT,
+                         height=20).pack()
+            ctk.CTkLabel(e, text="أضف مهمة من تحت", font=font(11), text_color=self.W_MUTED, height=16).pack()
+
+        limit = 7
         for it in tasks[:limit]:
-            row = ctk.CTkFrame(self.widget_body, fg_color="transparent")
-            row.pack(fill="x", pady=2)
-            urgent = it.get("urgent")
-            ctk.CTkButton(row, text="", width=22, height=22, corner_radius=11, fg_color="transparent",
-                          hover_color=GREEN, border_width=2, border_color=URGENT if urgent else MUTED,
-                          command=lambda it=it: self.widget_done(it)).pack(side="right", padx=(6, 2))
-            ctk.CTkLabel(row, text=("🔥 " if urgent else "") + it["title"], font=font(13), text_color=TEXT,
-                         anchor="e", justify="right", wraplength=self.WIDGET_W - 70).pack(
-                side="right", fill="x", expand=True)
+            self.widget_row(it)
         if len(tasks) > limit:
-            ctk.CTkLabel(self.widget_body, text=f"و {len(tasks) - limit} غيرها", font=font(11),
-                         text_color=MUTED, anchor="e").pack(fill="x", padx=4)
+            more = ctk.CTkButton(self.widget_body, text=f"و {len(tasks) - limit} مهام ثانية  ‹", height=24,
+                                 fg_color="transparent", hover_color=self.W_ROW, text_color=self.W_MUTED,
+                                 font=font(11), anchor="e", command=self.show)
+            more.pack(fill="x", pady=(2, 0))
         # الطول يتغيّر مع عدد المهام
         self.widget.update_idletasks()
         self.widget.geometry(f"{self.WIDGET_W}x{self.widget.winfo_reqheight()}")
